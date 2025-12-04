@@ -1,0 +1,12 @@
+services:
+  hikstatus_v2:
+    build: .
+    container_name: hikstatus_v2
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./camera_names.csv:/app/camera_names.csv
+    environment:
+      - TZ=Asia/Tehran

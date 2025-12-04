@@ -1,0 +1,21 @@
+# --- Python Artifacts ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- HikStatus Data (SENSITIVE) ---
+# Ignores the database containing passwords, settings, and logs
+data/
+*.db
+monitor.db
+
+# --- User Configuration ---
+# Ignores your specific camera list
+camera_names.csv
+
+# --- Legacy/Backup Files ---
+config.json
+monitor_state.json
+monitor_events.csv
+*.log
+.env

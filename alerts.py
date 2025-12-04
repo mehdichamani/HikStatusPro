@@ -1,0 +1,65 @@
+import smtplib
+import requests
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from database import Session, engine, Settings
+
+def get_config_dict():
+    with Session(engine) as session:
+        settings = session.query(Settings).all()
+        return {s.key: s.value for s in settings}
+
+def send_email_batch(subject, lines):
+    """Sends a single email with multiple lines."""
+    conf = get_config_dict()
+    if conf.get("MAIL_ENABLED") != "true" or not lines: return False
+    
+    try:
+        sender = conf.get("MAIL_USER")
+        recipients = conf.get("MAIL_RECIPIENTS", "").split(",")
+        server = conf.get("MAIL_SERVER")
+        port = int(conf.get("MAIL_PORT", 587))
+        password = conf.get("MAIL_PASS")
+        
+        body = "<h3>System Alert</h3><ul>" + "".join([f"<li>{line}</li>" for line in lines]) + "</ul>"
+        
+        msg = MIMEMultipart()
+        msg['From'] = sender
+        msg['To'] = ", ".join(recipients)
+        msg['Subject'] = f"{subject} ({len(lines)} Events)"
+        msg.attach(MIMEText(body, 'html'))
+
+        with smtplib.SMTP(server, port) as s:
+            s.starttls()
+            s.login(sender, password)
+            s.sendmail(sender, recipients, msg.as_string())
+        return True
+    except Exception as e:
+        print(f"📧 Mail Error: {e}")
+        return False
+
+def send_telegram_batch(header, lines):
+    """Sends a single Telegram message with multiple lines."""
+    conf = get_config_dict()
+    if conf.get("TELEGRAM_ENABLED") != "true" or not lines: return False
+
+    token = conf.get("TELEGRAM_BOT_TOKEN")
+    raw_ids = conf.get("TELEGRAM_CHAT_IDS", "")
+    if not token or not raw_ids: return False
+    
+    # Format message
+    message = f"*{header}*\n" + "\n".join(lines)
+    
+    chat_ids = [c.strip() for c in raw_ids.split(",") if c.strip()]
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    
+    success = False
+    for cid in chat_ids:
+        try:
+            payload = {'chat_id': cid, 'text': message, 'parse_mode': 'Markdown'}
+            requests.post(url, data=payload, timeout=5)
+            success = True
+        except Exception as e:
+            print(f"✈️ Telegram Error for {cid}: {e}")
+            
+    return success

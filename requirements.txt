@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+aiohttp
+requests
+pytz
+python-multipart
+jdatetime
