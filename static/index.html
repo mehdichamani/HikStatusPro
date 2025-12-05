@@ -6,212 +6,95 @@
     <title>HikStatus Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        /* --- HIGH CONTRAST DARK THEME --- */
+        /* [Previous CSS remains largely the same, adding Reports styles] */
         :root {
-            --bg-body: #050505;
-            --bg-surface: #141414;
-            --bg-surface-hover: #1f1f1f;
-            --border: #2a2a2a;
-            
-            --text-primary: #f0f0f0;
-            --text-secondary: #a0a0a0;
-            --text-tertiary: #666;
-
-            --primary: #64b5f6;
-            --primary-dim: #1e3a5f;
-            
-            --success: #81c784;
-            --success-bg: #1b3320;
-            
-            --error: #e57373;
-            --error-bg: #3e1b1b;
+            --bg-body: #050505; --bg-surface: #141414; --bg-surface-hover: #1f1f1f; --border: #2a2a2a;
+            --text-primary: #f0f0f0; --text-secondary: #a0a0a0; --text-tertiary: #666;
+            --primary: #64b5f6; --primary-dim: #1e3a5f; --success: #81c784; --success-bg: #1b3320; --error: #e57373; --error-bg: #3e1b1b;
         }
-
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: var(--bg-body); 
-            color: var(--text-primary); 
-            margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
-        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--text-primary); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* --- TOP NAV --- */
-        .top-nav {
-            display: flex; gap: 30px; padding: 0 24px;
-            background: var(--bg-surface); border-bottom: 1px solid var(--border);
-            height: 60px; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        .nav-tab {
-            background: none; border: none; 
-            color: var(--text-secondary); 
-            font-size: 14px; font-weight: 500;
-            cursor: pointer; padding: 18px 0;
-            border-bottom: 2px solid transparent;
-            transition: 0.2s; display: flex; align-items: center; gap: 8px;
-        }
+        /* NAV */
+        .top-nav { display: flex; gap: 30px; padding: 0 24px; background: var(--bg-surface); border-bottom: 1px solid var(--border); height: 60px; align-items: center; justify-content: center; flex-shrink: 0; }
+        .nav-tab { background: none; border: none; color: var(--text-secondary); font-size: 14px; font-weight: 500; cursor: pointer; padding: 18px 0; border-bottom: 2px solid transparent; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
         .nav-tab:hover { color: var(--text-primary); }
         .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
-        /* --- MAIN LAYOUT (Full Width) --- */
-        .main-container {
-            flex: 1; overflow-y: auto; padding: 20px;
-            scroll-behavior: smooth;
-        }
-        .view { display: none; width: 100%; animation: fadeIn 0.2s; }
-        .view.active { display: block; }
+        .main-container { flex: 1; overflow-y: auto; padding: 20px; scroll-behavior: smooth; }
+        .view { display: none; width: 100%; animation: fadeIn 0.2s; } .view.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- DASHBOARD HEADER --- */
-        .dash-header {
-            display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
-        }
-        .summary-chip {
-            background: var(--bg-surface); border: 1px solid var(--border);
-            border-radius: 8px; padding: 8px 16px;
-            display: flex; flex-direction: column; align-items: center; min-width: 90px;
-        }
+        /* DASHBOARD */
+        .dash-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+        .summary-chip { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; display: flex; flex-direction: column; align-items: center; min-width: 90px; }
         .chip-val { font-size: 20px; font-weight: 700; line-height: 1.2; }
         .chip-label { font-size: 11px; text-transform: uppercase; color: var(--text-tertiary); font-weight: 600; }
-        
-        .sync-btn {
-            background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-secondary);
-            width: 44px; height: 44px; border-radius: 8px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; transition: 0.2s;
-        }
+        .sync-btn { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-secondary); width: 44px; height: 44px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .sync-btn:hover { background: var(--bg-surface-hover); color: var(--primary); border-color: var(--primary); }
-        .sync-btn:active { transform: scale(0.95); }
 
-        /* --- NVR BLOCKS --- */
+        /* CARDS */
         .nvr-block { margin-bottom: 16px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-surface); }
-        .nvr-header {
-            padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
-            background: #181818; cursor: pointer; user-select: none;
-        }
+        .nvr-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; background: #181818; cursor: pointer; user-select: none; }
         .nvr-header:hover { background: #222; }
-        .nvr-grid { 
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
-            gap: 8px; padding: 12px; background: var(--border); border-top: 1px solid var(--border);
-        }
-
-        /* --- FLIP CARD CAMERA --- */
-        .cam-scene {
-            height: 50px; perspective: 600px; cursor: pointer;
-        }
-        .cam-card {
-            width: 100%; height: 100%; position: relative;
-            transition: transform 0.4s; transform-style: preserve-3d;
-            border-radius: 8px;
-        }
-        .cam-scene:hover .cam-card { transform: rotateX(180deg); }
-
-        .cam-face {
-            position: absolute; width: 100%; height: 100%;
-            backface-visibility: hidden;
-            display: flex; align-items: center; padding: 0 12px;
-            background: var(--bg-surface); 
-            border: 1px solid var(--border); border-radius: 8px;
-        }
+        .nvr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; padding: 12px; background: var(--border); border-top: 1px solid var(--border); }
         
-        /* Front Face (Name + Status) */
+        .cam-scene { height: 50px; perspective: 600px; cursor: pointer; }
+        .cam-card { width: 100%; height: 100%; position: relative; transition: transform 0.4s; transform-style: preserve-3d; border-radius: 8px; }
+        .cam-scene:hover .cam-card { transform: rotateX(180deg); }
+        .cam-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; padding: 0 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; }
         .cam-front { justify-content: flex-start; gap: 10px; }
-        .cam-back { 
-            transform: rotateX(180deg); 
-            background: var(--bg-surface-hover);
-            flex-direction: column; justify-content: center; align-items: center;
-            font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--primary);
-        }
-
-        /* Status Dot */
+        .cam-back { transform: rotateX(180deg); background: var(--bg-surface-hover); flex-direction: column; justify-content: center; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--primary); }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .led-green { background: var(--success); box-shadow: 0 0 8px var(--success-bg); }
         .led-red { background: var(--error); box-shadow: 0 0 8px var(--error-bg); }
-        
         .cam-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        /* Importance Borders on Card Wrapper */
-        .imp-1 .cam-face { border-left: 3px solid #333; }
-        .imp-2 .cam-face { border-left: 3px solid var(--primary); }
-        .imp-3 .cam-face { border-left: 3px solid var(--error); }
+        .imp-1 .cam-face { border-left: 3px solid #333; } .imp-2 .cam-face { border-left: 3px solid var(--primary); } .imp-3 .cam-face { border-left: 3px solid var(--error); }
 
-        /* --- MODAL (POPUP) --- */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
-            display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: 0.2s; z-index: 1000;
-        }
+        /* MODAL */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 1000; }
         .modal-overlay.open { opacity: 1; pointer-events: all; }
-        
-        .modal {
-            background: var(--bg-surface); border: 1px solid var(--border);
-            width: 400px; max-width: 90%; border-radius: 16px; padding: 24px;
-            transform: translateY(20px); transition: 0.2s; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-        }
+        .modal { background: var(--bg-surface); border: 1px solid var(--border); width: 400px; max-width: 90%; border-radius: 16px; padding: 24px; transform: translateY(20px); transition: 0.2s; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         .modal-overlay.open .modal { transform: translateY(0); }
-        
         .modal h2 { margin: 0 0 20px 0; font-size: 18px; color: var(--text-primary); border-bottom: 1px solid var(--border); padding-bottom: 12px; }
         .modal-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
         .modal-label { color: var(--text-tertiary); }
         .modal-val { font-weight: 600; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
         .modal-actions { margin-top: 24px; display: flex; gap: 12px; }
 
-        /* --- SETTINGS & LOGS --- */
-        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .config-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-        .section-head { 
-            display: flex; justify-content: space-between; align-items: center; 
-            border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px;
-            color: var(--primary); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-
-        .input-wrap { margin-bottom: 12px; }
-        .input-label { display: block; font-size: 12px; color: var(--text-tertiary); margin-bottom: 6px; }
-        .std-input { 
-            width: 100%; background: #0a0a0a; border: 1px solid var(--border); 
-            color: var(--text-primary); padding: 10px; border-radius: 6px; font-size: 14px;
-        }
-        .std-input:focus { border-color: var(--primary); outline: none; }
-
+        /* REPORTS */
+        .chart-container { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; height: 300px; position: relative; }
+        
+        /* COMMON */
         .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; font-size: 13px; flex: 1; }
         .btn-primary { background: var(--primary-dim); color: var(--primary); border: 1px solid var(--primary-dim); }
-        .btn-primary:hover { background: var(--primary); color: #000; }
-        
         .log-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .log-table th { text-align: left; padding: 12px; color: var(--text-tertiary); border-bottom: 1px solid var(--border); font-weight: 500; }
+        .log-table th { text-align: left; padding: 12px; color: var(--text-tertiary); border-bottom: 1px solid var(--border); }
         .log-table td { padding: 12px; border-bottom: 1px solid #1f1f1f; color: var(--text-secondary); }
-        .log-date { font-family: 'JetBrains Mono', monospace; color: var(--text-tertiary); white-space: nowrap; }
-
-        /* FABs */
+        
+        /* SETTINGS CSS OMITTED FOR BREVITY (Same as before) */
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .config-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .input-wrap { margin-bottom: 12px; }
+        .input-label { display: block; font-size: 12px; color: var(--text-tertiary); margin-bottom: 6px; }
+        .std-input { width: 100%; background: #0a0a0a; border: 1px solid var(--border); color: var(--text-primary); padding: 10px; border-radius: 6px; font-size: 14px; }
+        .section-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; color: var(--primary); font-size: 13px; font-weight: 700; text-transform: uppercase; }
         .fab-container { position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 15px; z-index: 100; }
-        .fab {
-            width: 56px; height: 56px; border-radius: 28px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.2s; color: #000;
-        }
-        .fab:hover { transform: scale(1.05); }
-        .fab-save { background: var(--primary); }
-        .fab-reload { background: var(--success); }
-
+        .fab { width: 56px; height: 56px; border-radius: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.2s; color: #000; }
+        .fab:hover { transform: scale(1.05); } .fab-save { background: var(--primary); } .fab-reload { background: var(--success); }
     </style>
 </head>
 <body>
 
-    <!-- TOP NAV -->
     <nav class="top-nav">
-        <button class="nav-tab active" onclick="nav('dash')">
-            <span class="material-icons-round">dashboard</span> Dash
-        </button>
-        <button class="nav-tab" onclick="nav('logs')">
-            <span class="material-icons-round">receipt_long</span> Logs
-        </button>
-        <button class="nav-tab" onclick="nav('settings')">
-            <span class="material-icons-round">tune</span> Config
-        </button>
+        <button class="nav-tab active" onclick="nav('dash')"><span class="material-icons-round">dashboard</span> Dash</button>
+        <button class="nav-tab" onclick="nav('reports')"><span class="material-icons-round">bar_chart</span> Reports</button>
+        <button class="nav-tab" onclick="nav('logs')"><span class="material-icons-round">receipt_long</span> Logs</button>
+        <button class="nav-tab" onclick="nav('settings')"><span class="material-icons-round">tune</span> Config</button>
     </nav>
 
     <div class="main-container" id="scrollContainer">
@@ -222,14 +105,20 @@
                 <div class="summary-chip"><span class="chip-val" id="total-cnt">-</span><span class="chip-label">Total</span></div>
                 <div class="summary-chip"><span class="chip-val" id="online-cnt" style="color:var(--success)">-</span><span class="chip-label">Online</span></div>
                 <div class="summary-chip"><span class="chip-val" id="offline-cnt" style="color:var(--error)">-</span><span class="chip-label">Offline</span></div>
-                <button class="sync-btn" onclick="fetchDash()" title="Sync Now">
-                    <span class="material-icons-round">sync</span>
-                </button>
+                <button class="sync-btn" onclick="fetchDash()"><span class="material-icons-round">sync</span></button>
             </div>
             <div id="nvr-container"></div>
         </div>
 
-        <!-- 2. LOGS -->
+        <!-- 2. REPORTS (NEW) -->
+        <div id="reports" class="view">
+            <div class="chart-container">
+                <canvas id="downtimeChart"></canvas>
+            </div>
+            <div style="text-align:center; color:var(--text-tertiary); font-size:12px">Showing cameras with downtime > 0</div>
+        </div>
+
+        <!-- 3. LOGS -->
         <div id="logs" class="view">
             <div style="display:flex; gap:12px; margin-bottom:20px">
                 <input class="std-input" id="logSearch" placeholder="Filter logs..." onchange="resetLogs()">
@@ -242,7 +131,7 @@
             <div id="logLoader" style="text-align:center; padding:20px; color:#666; display:none">Loading...</div>
         </div>
 
-        <!-- 3. SETTINGS -->
+        <!-- 4. SETTINGS -->
         <div id="settings" class="view">
             <div class="settings-grid">
                 <div id="config-container"></div>
@@ -263,20 +152,14 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Floating Buttons -->
             <div class="fab-container">
-                <div class="fab fab-reload" onclick="apply()" title="Apply & Reload">
-                    <span class="material-icons-round">restart_alt</span>
-                </div>
-                <div class="fab fab-save" onclick="saveAll()" title="Save Only">
-                    <span class="material-icons-round">save</span>
-                </div>
+                <div class="fab fab-reload" onclick="apply()"><span class="material-icons-round">restart_alt</span></div>
+                <div class="fab fab-save" onclick="saveAll()"><span class="material-icons-round">save</span></div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL POPUP -->
+    <!-- MODAL -->
     <div class="modal-overlay" id="camModal" onclick="closeModal(event)">
         <div class="modal">
             <h2 id="m-name">Camera Name</h2>
@@ -284,6 +167,12 @@
             <div class="modal-row"><span class="modal-label">NVR / Channel</span><span class="modal-val" id="m-nvr">-</span></div>
             <div class="modal-row"><span class="modal-label">Status</span><span class="modal-val" id="m-status">-</span></div>
             <div class="modal-row"><span class="modal-label">Last Online</span><span class="modal-val" id="m-last">-</span></div>
+            
+            <div style="margin: 20px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:15px 0;">
+                <div class="modal-row"><span class="modal-label">Downtime (1h)</span><span class="modal-val" id="m-down1" style="color:var(--error)">-</span></div>
+                <div class="modal-row"><span class="modal-label">Downtime (24h)</span><span class="modal-val" id="m-down24" style="color:var(--error)">-</span></div>
+            </div>
+
             <div class="modal-row"><span class="modal-label">Importance</span><span class="modal-val" id="m-imp">-</span></div>
             
             <div class="modal-actions">
@@ -298,6 +187,7 @@
         let settingsCache = [];
         let logOffset = 0; const logLimit = 50; let isLoadingLogs = false; let allLogsLoaded = false;
         let currentCamId = null; let currentImp = 1;
+        let myChart = null;
 
         function nav(id) {
             document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
@@ -306,139 +196,129 @@
             
             const btns = document.querySelectorAll('.nav-tab');
             if(id === 'dash') btns[0].classList.add('active');
-            if(id === 'logs') btns[1].classList.add('active');
-            if(id === 'settings') btns[2].classList.add('active');
+            if(id === 'reports') btns[1].classList.add('active');
+            if(id === 'logs') btns[2].classList.add('active');
+            if(id === 'settings') btns[3].classList.add('active');
 
             if(id === 'dash') fetchDash();
+            if(id === 'reports') loadReports();
             if(id === 'logs') resetLogs();
             if(id === 'settings') loadSettings();
         }
 
         // --- DASHBOARD ---
         function getNvrNum(ip) { return ip.split('.').pop(); }
-
         async function fetchDash() {
-            const res = await fetch(`${API}/cameras`);
-            const cams = await res.json();
-
+            const res = await fetch(`${API}/cameras`); const cams = await res.json();
             document.getElementById('total-cnt').textContent = cams.length;
             document.getElementById('online-cnt').textContent = cams.filter(c=>c.status==='Online').length;
             document.getElementById('offline-cnt').textContent = cams.filter(c=>c.status!=='Online').length;
-
-            const groups = {};
-            cams.forEach(c => { if(!groups[c.nvr_ip]) groups[c.nvr_ip] = []; groups[c.nvr_ip].push(c); });
-
-            const container = document.getElementById('nvr-container');
-            container.innerHTML = '';
+            
+            const groups = {}; cams.forEach(c => { if(!groups[c.nvr_ip]) groups[c.nvr_ip] = []; groups[c.nvr_ip].push(c); });
+            const container = document.getElementById('nvr-container'); container.innerHTML = '';
             
             Object.keys(groups).sort((a,b) => parseInt(getNvrNum(a)) - parseInt(getNvrNum(b))).forEach(ip => {
                 const list = groups[ip];
-                const nvrNum = getNvrNum(ip);
-                
                 let cells = '';
                 list.sort((a,b)=>parseInt(a.channel_id)-parseInt(b.channel_id)).forEach(c => {
                     const isOn = c.status === 'Online';
-                    // Pass data as attributes for the modal
                     const dataObj = encodeURIComponent(JSON.stringify(c));
-                    
-                    cells += `
-                    <div class="cam-scene imp-${c.importance}" onclick="openModal('${dataObj}')">
-                        <div class="cam-card">
-                            <div class="cam-face cam-front">
-                                <span class="status-dot ${isOn?'led-green':'led-red'}"></span>
-                                <span class="cam-name">${c.name}</span>
-                            </div>
-                            <div class="cam-face cam-back">
-                                <div>${c.ip}</div>
-                                <div style="color:var(--text-tertiary)">CH ${c.channel_id}</div>
-                            </div>
-                        </div>
-                    </div>`;
+                    cells += `<div class="cam-scene imp-${c.importance}" onclick="openModal('${dataObj}')"><div class="cam-card"><div class="cam-face cam-front"><span class="status-dot ${isOn?'led-green':'led-red'}"></span><span class="cam-name">${c.name}</span></div><div class="cam-face cam-back"><div>${c.ip}</div><div style="color:var(--text-tertiary)">CH ${c.channel_id}</div></div></div></div>`;
                 });
-
-                container.innerHTML += `
-                <div class="nvr-block">
-                    <div class="nvr-header">
-                        <span style="font-weight:600; font-size:14px; color:var(--text-primary)">NVR ${nvrNum}</span>
-                        <span style="font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--text-tertiary)">${ip}</span>
-                    </div>
-                    <div class="nvr-grid">${cells}</div>
-                </div>`;
+                container.innerHTML += `<div class="nvr-block"><div class="nvr-header"><span style="font-weight:600; font-size:14px; color:var(--text-primary)">NVR ${getNvrNum(ip)}</span><span style="font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--text-tertiary)">${ip}</span></div><div class="nvr-grid">${cells}</div></div>`;
             });
         }
 
-        // --- MODAL LOGIC ---
-        function openModal(dataStr) {
+        // --- MODAL & STATS ---
+        async function openModal(dataStr) {
             const c = JSON.parse(decodeURIComponent(dataStr));
-            currentCamId = c.id;
-            currentImp = c.importance;
-            
+            currentCamId = c.id; currentImp = c.importance;
             document.getElementById('m-name').textContent = c.name;
             document.getElementById('m-ip').textContent = c.ip;
             document.getElementById('m-nvr').textContent = `${c.nvr_ip} (Ch ${c.channel_id})`;
-            
             const st = document.getElementById('m-status');
             st.textContent = c.status;
             st.style.color = c.status === 'Online' ? 'var(--success)' : 'var(--error)';
-            
-            document.getElementById('m-last').textContent = c.last_online ? new Date(c.last_online).toLocaleString() : '-';
+            document.getElementById('m-last').textContent = c.last_online ? new Date(c.last_online).toLocaleTimeString() : '-';
             
             const impLabels = ['Low', 'Normal', 'Critical'];
             document.getElementById('m-imp').textContent = impLabels[c.importance-1];
             
+            // Load Stats
+            document.getElementById('m-down1').textContent = "Loading...";
+            document.getElementById('m-down24').textContent = "Loading...";
             document.getElementById('camModal').classList.add('open');
+            
+            const sRes = await fetch(`${API}/stats/${c.id}`);
+            const stats = await sRes.json();
+            document.getElementById('m-down1').textContent = stats.down_1h + " mins";
+            document.getElementById('m-down24').textContent = stats.down_24h + " mins";
         }
-
         function closeModal(e) { if(e.target.id === 'camModal') document.getElementById('camModal').classList.remove('open'); }
         function closeModalForce() { document.getElementById('camModal').classList.remove('open'); }
+        async function cycleImpModal() { let n = currentImp + 1; if(n>3)n=1; await fetch(`${API}/cameras/${currentCamId}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({importance:n})}); currentImp=n; document.getElementById('m-imp').textContent = ['Low','Normal','Critical'][n-1]; fetchDash(); }
 
-        async function cycleImpModal() {
-            let next = currentImp + 1; if(next > 3) next = 1;
-            await fetch(`${API}/cameras/${currentCamId}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({importance:next})});
-            currentImp = next;
-            const impLabels = ['Low', 'Normal', 'Critical'];
-            document.getElementById('m-imp').textContent = impLabels[next-1];
-            fetchDash(); // Refresh background
+        // --- REPORTS ---
+        async function loadReports() {
+            const res = await fetch(`${API}/reports/overview`);
+            const data = await res.json();
+            
+            if (myChart) myChart.destroy();
+            const ctx = document.getElementById('downtimeChart').getContext('2d');
+            
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.name),
+                    datasets: [{
+                        label: 'Downtime 24h (mins)',
+                        data: data.map(d => d.down_24h),
+                        backgroundColor: '#ef5353',
+                        borderRadius: 4
+                    }, {
+                        label: 'Downtime 1h (mins)',
+                        data: data.map(d => d.down_1h),
+                        backgroundColor: '#64b5f6',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { grid: { color: '#333' } }, x: { grid: { display: false } } },
+                    plugins: { legend: { labels: { color: '#ccc' } } }
+                }
+            });
         }
 
         // --- LOGS ---
-        function resetLogs() { document.getElementById('log-list').innerHTML = ''; logOffset = 0; allLogsLoaded = false; fetchLogs(); }
+        function resetLogs() { document.getElementById('log-list').innerHTML = ''; logOffset=0; allLogsLoaded=false; fetchLogs(); }
         async function fetchLogs() {
-            if(isLoadingLogs || allLogsLoaded) return;
-            isLoadingLogs = true; document.getElementById('logLoader').style.display='block';
+            if(isLoadingLogs||allLogsLoaded)return; isLoadingLogs=true; document.getElementById('logLoader').style.display='block';
             const q = document.getElementById('logSearch').value;
             const res = await fetch(`${API}/logs?q=${q}&limit=${logLimit}&offset=${logOffset}`);
             const logs = await res.json();
-            if(logs.length < logLimit) allLogsLoaded = true;
-            
+            if(logs.length < logLimit) allLogsLoaded=true;
             document.getElementById('log-list').insertAdjacentHTML('beforeend', logs.map(l => {
                 const isErr = ['Error','Failed','Offline'].includes(l.state);
                 return `<tr><td class="log-date">${l.shamsi_date}</td><td style="font-weight:600">${l.log_type}</td><td style="color:${isErr?'var(--error)':'var(--success)'}">${l.state}</td><td>${l.details}</td></tr>`;
             }).join(''));
-            logOffset += logs.length; isLoadingLogs = false; document.getElementById('logLoader').style.display='none';
+            logOffset+=logs.length; isLoadingLogs=false; document.getElementById('logLoader').style.display='none';
         }
         document.getElementById('scrollContainer').addEventListener('scroll', (e) => {
             if(e.target.scrollTop + e.target.clientHeight >= e.target.scrollHeight - 100 && document.getElementById('logs').classList.contains('active')) fetchLogs();
         });
 
-        // --- SETTINGS ---
+        // --- SETTINGS (Keep same logic) ---
         async function loadSettings() {
             const sRes = await fetch(`${API}/settings`); settingsCache = await sRes.json(); renderConfig();
             const cRes = await fetch(`${API}/config/csv`); document.getElementById('csvEditor').value = await cRes.text();
             const nRes = await fetch(`${API}/nvrs`); const nvrs = await nRes.json();
-            document.getElementById('nvr-list').innerHTML = nvrs.map(n => `
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:10px 0;">
-                    <div style="font-family:'JetBrains Mono'; font-size:13px">${n.ip} <span style="color:var(--text-tertiary)">(${n.user})</span></div>
-                    <button style="background:none; border:none; color:var(--text-tertiary); cursor:pointer" onclick="delNVR('${n.ip}')"><span class="material-icons-round">delete</span></button>
-                </div>`).join('');
+            document.getElementById('nvr-list').innerHTML = nvrs.map(n => `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:10px 0;"><div style="font-family:'JetBrains Mono'; font-size:13px">${n.ip} <span style="color:var(--text-tertiary)">(${n.user})</span></div><button style="background:none; border:none; color:var(--text-tertiary); cursor:pointer" onclick="delNVR('${n.ip}')"><span class="material-icons-round">delete</span></button></div>`).join('');
         }
-
         function renderConfig() {
             const container = document.getElementById('config-container'); container.innerHTML = '';
-            const groups = {
-                'Email Alerts': ['MAIL_ENABLED', 'MAIL_SERVER', 'MAIL_PORT', 'MAIL_USER', 'MAIL_PASS', 'MAIL_RECIPIENTS', 'MAIL_FIRST_ALERT_DELAY_MINUTES', 'MAIL_ALERT_FREQUENCY_MINUTES', 'MAIL_MUTE_AFTER_N_ALERTS'],
-                'Telegram Alerts': ['TELEGRAM_ENABLED', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_IDS', 'TELEGRAM_PROXY', 'TELEGRAM_FIRST_ALERT_DELAY_MINUTES', 'TELEGRAM_ALERT_FREQUENCY_MINUTES', 'TELEGRAM_MUTE_AFTER_N_ALERTS']
-            };
+            const groups = { 'Email Alerts': ['MAIL_ENABLED', 'MAIL_SERVER', 'MAIL_PORT', 'MAIL_USER', 'MAIL_PASS', 'MAIL_RECIPIENTS', 'MAIL_FIRST_ALERT_DELAY_MINUTES', 'MAIL_ALERT_FREQUENCY_MINUTES', 'MAIL_MUTE_AFTER_N_ALERTS'], 'Telegram Alerts': ['TELEGRAM_ENABLED', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_IDS', 'TELEGRAM_PROXY', 'TELEGRAM_FIRST_ALERT_DELAY_MINUTES', 'TELEGRAM_ALERT_FREQUENCY_MINUTES', 'TELEGRAM_MUTE_AFTER_N_ALERTS'] };
             for(const [title, keys] of Object.entries(groups)) {
                 let html = `<div class="config-card" style="margin-bottom:20px"><div class="section-head">${title} <button style="background:none; border:1px solid var(--border); color:var(--primary); border-radius:4px; padding:2px 8px; cursor:pointer" onclick="testConn('${title.includes('Email')?'email':'telegram'}')">TEST</button></div>`;
                 keys.forEach(k => {
@@ -446,31 +326,14 @@
                     const label = k.split('_').slice(1).join(' ').toLowerCase().replace(/\b\w/g, c=>c.toUpperCase());
                     if(k.endsWith('_ENABLED')) {
                         html += `<div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:center"><span style="font-size:14px">${label}</span><input type="checkbox" id="${k}" ${item.value==='true'?'checked':''}></div>`;
-                    } else {
-                        html += `<div class="input-wrap"><label class="input-label">${label}</label><input class="std-input" id="${k}" value="${item.value||''}" type="${k.includes('PASS')||k.includes('TOKEN')?'password':'text'}"></div>`;
-                    }
-                });
-                container.innerHTML += html + '</div>';
+                    } else { html += `<div class="input-wrap"><label class="input-label">${label}</label><input class="std-input" id="${k}" value="${item.value||''}" type="${k.includes('PASS')||k.includes('TOKEN')?'password':'text'}"></div>`; }
+                }); container.innerHTML += html + '</div>';
             }
         }
-
-        async function saveAll() {
-            for(const s of settingsCache) {
-                const el = document.getElementById(s.key);
-                if(el) {
-                    let val = el.value; if(el.type==='checkbox') val=el.checked?'true':'false';
-                    if(val!==s.value) await fetch(`${API}/settings/${s.key}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key:s.key, value:val})});
-                }
-            }
-            await fetch(`${API}/config/csv`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:document.getElementById('csvEditor').value})});
-            alert('Settings Saved');
-        }
+        async function saveAll() { for(const s of settingsCache) { const el = document.getElementById(s.key); if(el) { let val = el.value; if(el.type==='checkbox') val=el.checked?'true':'false'; if(val!==s.value) await fetch(`${API}/settings/${s.key}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key:s.key, value:val})}); } } await fetch(`${API}/config/csv`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:document.getElementById('csvEditor').value})}); alert('Saved'); }
         async function apply() { await saveAll(); await fetch(`${API}/monitor/restart`, {method:'POST'}); alert('Restarted'); location.reload(); }
         async function testConn(type) { try { const res = await fetch(`/api/test/${type}`, {method:'POST'}); if(res.ok) alert('Passed'); else alert('Failed'); } catch(e){alert(e);} }
-        async function addNVR() {
-            const ip=document.getElementById('nvrIp').value; const u=document.getElementById('nvrUser').value; const p=document.getElementById('nvrPass').value;
-            await fetch(`${API}/nvrs`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ip, user:u, password:p||null, enabled:true})}); loadSettings();
-        }
+        async function addNVR() { const ip=document.getElementById('nvrIp').value; const u=document.getElementById('nvrUser').value; const p=document.getElementById('nvrPass').value; await fetch(`${API}/nvrs`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ip, user:u, password:p||null, enabled:true})}); loadSettings(); }
         async function delNVR(ip) { if(confirm('Delete?')) { await fetch(`${API}/nvrs/${ip}`, {method:'DELETE'}); loadSettings(); } }
 
         nav('dash'); setInterval(fetchDash, 5000);

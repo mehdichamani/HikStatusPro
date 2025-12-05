@@ -1,13 +1,14 @@
 import asyncio
 import os
 import jdatetime
+from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select, col
-from database import init_db, get_session, Camera, Log, NVR, Settings, engine
+from database import init_db, get_session, Camera, Log, NVR, Settings, DowntimeEvent, engine
 from monitor import start_monitor_loop
 from alerts import send_email_raw, send_telegram_raw, get_config_dict
 
@@ -68,11 +69,11 @@ async def restart_monitor():
     monitor_task = asyncio.create_task(start_monitor_loop())
     return {"status": "restarted"}
 
-# --- TEST ENDPOINTS (FIXED) ---
-@app.post("/api/test/email")  # <--- CHANGED FROM 'mail' TO 'email'
+# --- TEST ENDPOINTS ---
+@app.post("/api/test/email")
 def test_mail():
     conf = get_config_dict()
-    res = send_email_raw(conf, "HikStatus Test", "<h3>Test Successful</h3><p>Your email config is working.</p>")
+    res = send_email_raw(conf, "HikStatus Test", "<h3>Test Successful</h3>")
     if res is True: return {"status": "ok"}
     raise HTTPException(status_code=400, detail=str(res))
 
@@ -135,11 +136,8 @@ def save_csv(payload: CsvContent):
 @app.get("/api/logs")
 def search_logs(q: str = None, limit: int = 50, offset: int = 0, session: Session = Depends(get_session)):
     query = select(Log).order_by(Log.timestamp.desc()).offset(offset).limit(limit)
-    if q: 
-        query = query.where(col(Log.details).contains(q) | col(Log.log_type).contains(q))
-    
+    if q: query = query.where(col(Log.details).contains(q) | col(Log.log_type).contains(q))
     logs = session.exec(query).all()
-    
     output = []
     for l in logs:
         jd = jdatetime.datetime.fromgregorian(datetime=l.timestamp)
@@ -148,3 +146,51 @@ def search_logs(q: str = None, limit: int = 50, offset: int = 0, session: Sessio
         item['shamsi_date'] = shamsi_str
         output.append(item)
     return output
+
+# --- NEW: STATS API ---
+def calculate_downtime(session, cam_id, hours):
+    now = datetime.now()
+    cutoff = now - timedelta(hours=hours)
+    
+    # Find events that overlap with the window [cutoff, now]
+    events = session.exec(select(DowntimeEvent).where(
+        DowntimeEvent.camera_id == cam_id,
+        (DowntimeEvent.end_time == None) | (DowntimeEvent.end_time > cutoff)
+    )).all()
+    
+    total_minutes = 0
+    for e in events:
+        # Start: Max of event_start or window_start
+        start = max(e.start_time, cutoff)
+        # End: Min of event_end or now
+        end = min(e.end_time or now, now)
+        
+        if end > start:
+            total_minutes += (end - start).total_seconds() / 60
+            
+    return int(total_minutes)
+
+@app.get("/api/stats/{cam_id}")
+def get_cam_stats(cam_id: int, session: Session = Depends(get_session)):
+    """Returns downtime for last 1h and 24h."""
+    down_1h = calculate_downtime(session, cam_id, 1)
+    down_24h = calculate_downtime(session, cam_id, 24)
+    return {"down_1h": down_1h, "down_24h": down_24h}
+
+@app.get("/api/reports/overview")
+def get_reports(session: Session = Depends(get_session)):
+    """Returns aggregated stats for charts."""
+    cameras = session.exec(select(Camera)).all()
+    data = []
+    for c in cameras:
+        d1 = calculate_downtime(session, c.id, 1)
+        d24 = calculate_downtime(session, c.id, 24)
+        if d1 > 0 or d24 > 0:
+            data.append({
+                "name": c.name,
+                "down_1h": d1,
+                "down_24h": d24
+            })
+    # Sort by highest downtime
+    data.sort(key=lambda x: x['down_24h'], reverse=True)
+    return data

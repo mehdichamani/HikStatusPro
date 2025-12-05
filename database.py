@@ -24,12 +24,18 @@ class Camera(SQLModel, table=True):
     telegram_alert_count: int = 0
     telegram_last_alert: Optional[datetime] = None
 
+class DowntimeEvent(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    camera_id: int = Field(foreign_key="camera.id")
+    start_time: datetime = Field(default_factory=datetime.now)
+    end_time: Optional[datetime] = None
+
 class Log(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.now)
-    log_type: str  # Camera, Mail, Telegram, Service
-    state: str     # Online/Offline, Sent/Failed, Started/Stopped
-    details: str   # Detail message
+    log_type: str
+    state: str
+    details: str
 
 class Settings(SQLModel, table=True):
     key: str = Field(primary_key=True)
