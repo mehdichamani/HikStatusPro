@@ -10,10 +10,11 @@ def get_config_dict():
         return {s.key: s.value for s in settings}
 
 def send_email_batch(subject, lines):
-    """Sends a single email with multiple lines."""
     conf = get_config_dict()
     if conf.get("MAIL_ENABLED") != "true" or not lines: return False
-    
+    return send_email_raw(conf, subject, "<h3>System Alert</h3><ul>" + "".join([f"<li>{l}</li>" for l in lines]) + "</ul>")
+
+def send_email_raw(conf, subject, body):
     try:
         sender = conf.get("MAIL_USER")
         recipients = conf.get("MAIL_RECIPIENTS", "").split(",")
@@ -21,12 +22,10 @@ def send_email_batch(subject, lines):
         port = int(conf.get("MAIL_PORT", 587))
         password = conf.get("MAIL_PASS")
         
-        body = "<h3>System Alert</h3><ul>" + "".join([f"<li>{line}</li>" for line in lines]) + "</ul>"
-        
         msg = MIMEMultipart()
         msg['From'] = sender
         msg['To'] = ", ".join(recipients)
-        msg['Subject'] = f"{subject} ({len(lines)} Events)"
+        msg['Subject'] = subject
         msg.attach(MIMEText(body, 'html'))
 
         with smtplib.SMTP(server, port) as s:
@@ -36,30 +35,34 @@ def send_email_batch(subject, lines):
         return True
     except Exception as e:
         print(f"📧 Mail Error: {e}")
-        return False
+        return str(e)
 
 def send_telegram_batch(header, lines):
-    """Sends a single Telegram message with multiple lines."""
     conf = get_config_dict()
     if conf.get("TELEGRAM_ENABLED") != "true" or not lines: return False
+    msg = f"*{header}*\n" + "\n".join(lines)
+    return send_telegram_raw(conf, msg)
 
+def send_telegram_raw(conf, message):
     token = conf.get("TELEGRAM_BOT_TOKEN")
     raw_ids = conf.get("TELEGRAM_CHAT_IDS", "")
-    if not token or not raw_ids: return False
+    proxy_url = conf.get("TELEGRAM_PROXY", "")
     
-    # Format message
-    message = f"*{header}*\n" + "\n".join(lines)
+    if not token or not raw_ids: return "Missing Token/ID"
     
     chat_ids = [c.strip() for c in raw_ids.split(",") if c.strip()]
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     
-    success = False
+    # Configure Proxy
+    proxies = {'https': proxy_url, 'http': proxy_url} if proxy_url else None
+
+    errors = []
     for cid in chat_ids:
         try:
             payload = {'chat_id': cid, 'text': message, 'parse_mode': 'Markdown'}
-            requests.post(url, data=payload, timeout=5)
-            success = True
+            requests.post(url, data=payload, proxies=proxies, timeout=10)
         except Exception as e:
-            print(f"✈️ Telegram Error for {cid}: {e}")
+            print(f"✈️ Telegram Error: {e}")
+            errors.append(str(e))
             
-    return success
+    return errors[0] if errors else True

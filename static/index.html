@@ -14,20 +14,20 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; height: 100vh; display: flex; overflow: hidden; }
 
-        /* --- LAYOUT: DESKTOP VS MOBILE --- */
-        .sidebar { width: var(--sidebar-width); background: #050505; border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; z-index: 20; transition: transform 0.3s; }
+        /* --- LAYOUT --- */
+        .sidebar { width: var(--sidebar-width); background: #050505; border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; z-index: 20; }
         .bottom-nav { display: none; }
         .main { flex: 1; padding: 30px; overflow-y: auto; position: relative; scroll-behavior: smooth; }
 
         @media (max-width: 768px) {
             .sidebar { display: none; }
             .bottom-nav { display: flex; position: fixed; bottom: 0; width: 100%; background: #111; border-top: 1px solid var(--border); justify-content: space-around; padding: 10px 0; z-index: 100; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-            .main { padding: 15px; padding-bottom: 90px; } /* Space for bottom nav */
+            .main { padding: 15px; padding-bottom: 90px; } 
         }
 
-        /* --- NAVIGATION --- */
-        .logo { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 40px; color: #fff; letter-spacing: -0.5px; }
-        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px; color: #888; text-decoration: none; border-radius: 8px; margin-bottom: 4px; cursor: pointer; transition: 0.2s; font-weight: 500; }
+        /* --- UI ELEMENTS --- */
+        .logo { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 40px; color: #fff; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px; color: #888; border-radius: 8px; margin-bottom: 4px; cursor: pointer; transition: 0.2s; font-weight: 500; }
         .nav-item:hover { background: #222; color: #fff; }
         .nav-item.active { background: var(--primary); color: white; }
         
@@ -35,191 +35,104 @@
         .tab-btn.active { color: var(--primary); }
         .tab-btn .material-icons-round { font-size: 24px; }
 
-        /* --- HEADER & SUMMARY --- */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        h2 { margin: 0; font-size: 22px; font-weight: 700; }
-        
         .global-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .stat-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; text-align: center; }
-        .stat-val { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
-        .stat-label { font-size: 11px; color: #777; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        .stat-val { font-size: 24px; font-weight: 800; }
+        .stat-label { font-size: 11px; color: #777; text-transform: uppercase; font-weight: 600; }
         .st-green { color: var(--success); } .st-red { color: var(--danger); }
 
-        /* --- NVR GROUPS --- */
+        /* NVR ACCORDION */
         .nvr-group { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 15px; overflow: hidden; }
         .nvr-header { padding: 12px 20px; background: #222; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid transparent; user-select: none; }
         .nvr-group.expanded .nvr-header { border-bottom-color: var(--border); background: #262626; }
         .nvr-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 10px; }
         .nvr-tag { background: #111; border: 1px solid #333; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 11px; color: #888; }
-        
         .nvr-content { display: none; padding: 15px; background: #151515; }
         .nvr-group.expanded .nvr-content { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        
-        /* On Mobile, tighten the grid */
-        @media (max-width: 600px) {
-            .nvr-group.expanded .nvr-content { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-        }
+        @media (max-width: 600px) { .nvr-group.expanded .nvr-content { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; } }
 
-        /* --- CAMERA CARDS --- */
+        /* COMPACT CARD */
         .cam-card { background: #1f1f1f; border: 1px solid var(--border); border-radius: 8px; padding: 10px; position: relative; display: flex; align-items: center; gap: 12px; transition: transform 0.1s; cursor: pointer; }
         .cam-card:hover { border-color: #444; transform: translateY(-1px); }
-        
         .status-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); flex-shrink: 0; }
         .online .status-dot { background: var(--success); box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
         .offline .status-dot { background: var(--danger); box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+        .cam-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .imp-1 { border-left: 3px solid #333; } .imp-2 { border-left: 3px solid var(--primary); } .imp-3 { border-left: 3px solid var(--danger); }
         
-        .cam-info { flex: 1; min-width: 0; }
-        .cam-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
-        .cam-id { font-size: 11px; color: #666; font-family: monospace; font-weight: 700; }
-        
-        /* Importance Borders */
-        .imp-1 { border-left: 3px solid #333; }
-        .imp-2 { border-left: 3px solid var(--primary); }
-        .imp-3 { border-left: 3px solid var(--danger); }
+        .cam-card:hover::after { content: attr(title); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px; white-space: nowrap; pointer-events: none; margin-bottom: 5px; z-index: 10; }
 
-        /* Tooltip for IP */
-        .cam-card:hover::after {
-            content: attr(title); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
-            background: #000; color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px; white-space: nowrap; pointer-events: none; margin-bottom: 5px;
-        }
-
-        /* --- SETTINGS UI (Responsive Grid) --- */
-        .settings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-        @media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } }
-
-        .config-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .config-title { color: var(--primary); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
-        
-        .form-row { margin-bottom: 12px; }
-        .form-label { display: block; font-size: 12px; color: #aaa; margin-bottom: 5px; }
-        .form-input { width: 100%; background: #252525; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; font-size: 14px; }
-        .form-input:focus { border-color: var(--primary); outline: none; background: #333; }
-
-        /* Toggles */
-        .toggle-row { display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 10px 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid transparent; }
-        .toggle-row:hover { border-color: #444; }
-        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .3s; border-radius: 22px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--primary); }
-        input:checked + .slider:before { transform: translateX(18px); }
-
-        /* Buttons */
-        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        .btn { padding: 10px 16px; border-radius: 6px; border: none; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; transition: 0.2s; white-space: nowrap; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: #2563eb; }
-        .btn-success { background: var(--success); color: white; }
-        .btn-danger { background: #dc2626; color: white; }
-        
-        /* Tables */
+        /* LOG TABLE */
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
         th { text-align: left; padding: 10px; color: #666; border-bottom: 1px solid #333; font-weight: 600; }
         td { padding: 10px; border-bottom: 1px solid #252525; color: #ddd; }
         .log-time { color: #666; font-family: monospace; white-space: nowrap; }
+        .log-type { font-weight: 700; width: 80px; }
+        .log-state { width: 80px; }
 
-        /* Views */
-        .view { display: none; animation: fadeIn 0.2s; }
-        .view.active { display: block; }
-        
-        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 50px; opacity: 0; transition: 0.3s; z-index: 200; box-shadow: 0 5px 20px rgba(0,0,0,0.5); pointer-events: none; }
-        .toast.show { opacity: 1; bottom: 100px; }
-        @media (min-width: 769px) { .toast { bottom: 30px; } .toast.show { bottom: 50px; } }
+        /* SETTINGS */
+        .settings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        @media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } }
+        .config-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .config-title { color: var(--primary); font-size: 13px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; }
+        .form-input { width: 100%; background: #252525; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+        .btn { padding: 10px 16px; border-radius: 6px; border: none; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .view { display: none; animation: fadeIn 0.2s; } .view.active { display: block; }
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 50px; opacity: 0; transition: 0.3s; z-index: 200; pointer-events: none; }
+        .toast.show { opacity: 1; bottom: 50px; }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <div class="logo">
-            <span class="material-icons-round" style="color:var(--primary)">security_eye</span>
-            HikStatus <span style="color:#555; font-weight:400; font-size:12px; margin-left:auto">v2.1</span>
-        </div>
-        <div class="nav-item active" onclick="nav('dash')" id="d-dash">
-            <span class="material-icons-round">dashboard</span> Dashboard
-        </div>
-        <div class="nav-item" onclick="nav('logs')" id="d-logs">
-            <span class="material-icons-round">list_alt</span> Event Logs
-        </div>
-        <div class="nav-item" onclick="nav('settings')" id="d-settings">
-            <span class="material-icons-round">settings</span> Configuration
-        </div>
+        <div class="logo"><span class="material-icons-round" style="color:var(--primary)">security_eye</span> HikStatus</div>
+        <div class="nav-item active" onclick="nav('dash')" id="d-dash"><span class="material-icons-round">dashboard</span> Dashboard</div>
+        <div class="nav-item" onclick="nav('logs')" id="d-logs"><span class="material-icons-round">list_alt</span> Logs</div>
+        <div class="nav-item" onclick="nav('settings')" id="d-settings"><span class="material-icons-round">settings</span> Config</div>
     </div>
 
     <div class="main">
         <div id="toast" class="toast">Saved!</div>
 
         <div id="dash" class="view active">
-            <div class="header">
-                <h2>Overview</h2>
-                <button class="btn btn-primary" onclick="fetchDash()" style="padding:8px 12px">
-                    <span class="material-icons-round" style="font-size:18px">refresh</span> Refresh
-                </button>
-            </div>
-
             <div class="global-summary">
-                <div class="stat-card">
-                    <div class="stat-val" id="total-cnt">-</div>
-                    <div class="stat-label">Cameras</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-val st-green" id="online-cnt">-</div>
-                    <div class="stat-label">Online</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-val st-red" id="offline-cnt">-</div>
-                    <div class="stat-label">Offline</div>
-                </div>
+                <div class="stat-card"><div class="stat-val" id="total-cnt">-</div><div class="stat-label">Cameras</div></div>
+                <div class="stat-card"><div class="stat-val st-green" id="online-cnt">-</div><div class="stat-label">Online</div></div>
+                <div class="stat-card"><div class="stat-val st-red" id="offline-cnt">-</div><div class="stat-label">Offline</div></div>
             </div>
-
             <div id="nvr-container"></div>
         </div>
 
         <div id="logs" class="view">
-            <div class="header"><h2>System Logs</h2></div>
             <div style="display:flex; gap:10px; margin-bottom:20px">
-                <input id="logSearch" class="form-input" placeholder="Search (e.g. 'Offline' or camera name)..." style="max-width:300px">
+                <input id="logSearch" class="form-input" placeholder="Search..." onchange="fetchLogs()" style="margin-bottom:0">
                 <button class="btn btn-primary" onclick="fetchLogs()">Search</button>
             </div>
             <table>
-                <thead><tr><th>Time</th><th>Lvl</th><th>Msg</th></tr></thead>
+                <thead><tr><th>Time</th><th>Type</th><th>State</th><th>Detail</th></tr></thead>
                 <tbody id="log-list"></tbody>
             </table>
         </div>
 
         <div id="settings" class="view">
-            <div class="header">
-                <h2>Configuration</h2>
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="saveAll()">
-                        <span class="material-icons-round">save</span> Save
-                    </button>
-                    <button class="btn btn-success" onclick="apply()">
-                        <span class="material-icons-round">restart_alt</span> Apply
-                    </button>
-                </div>
+            <div style="display:flex; gap:10px; margin-bottom:20px">
+                <button class="btn btn-primary" onclick="saveAll()">Save All</button>
+                <button class="btn btn-primary" style="background:var(--success)" onclick="apply()">Apply & Restart</button>
             </div>
-
             <div class="settings-layout">
                 <div id="config-container"></div>
-
                 <div>
                     <div class="config-card">
-                        <div class="config-title">NVR Management</div>
-                        <div style="display:flex; gap:5px; margin-bottom:15px">
-                            <input id="nvrIp" class="form-input" placeholder="172.20.2.X">
-                            <input id="nvrUser" class="form-input" placeholder="User" style="width:80px">
-                            <input id="nvrPass" class="form-input" type="password" placeholder="Pass" style="width:80px">
-                            <button class="btn btn-primary" onclick="addNVR()">+</button>
+                        <div class="config-title">NVRs</div>
+                        <div style="display:flex; gap:5px; margin-bottom:10px">
+                            <input id="nvrIp" class="form-input" placeholder="IP"><input id="nvrUser" class="form-input" placeholder="User" style="width:80px">
+                            <input id="nvrPass" class="form-input" type="password" placeholder="Pass" style="width:80px"><button class="btn btn-primary" onclick="addNVR()">+</button>
                         </div>
-                        <table>
-                            <thead><tr><th>IP</th><th>User</th><th></th></tr></thead>
-                            <tbody id="nvr-list"></tbody>
-                        </table>
+                        <table><thead><tr><th>IP</th><th>User</th><th></th></tr></thead><tbody id="nvr-list"></tbody></table>
                     </div>
-
                     <div class="config-card">
-                        <div class="config-title">Camera Database (CSV)</div>
+                        <div class="config-title">Camera CSV</div>
                         <textarea id="csvEditor" class="form-input" style="height:250px; font-family:monospace; resize:vertical" spellcheck="false"></textarea>
                     </div>
                 </div>
@@ -228,15 +141,9 @@
     </div>
 
     <div class="bottom-nav">
-        <button class="tab-btn active" onclick="nav('dash')" id="m-dash">
-            <span class="material-icons-round">dashboard</span>Dash
-        </button>
-        <button class="tab-btn" onclick="nav('logs')" id="m-logs">
-            <span class="material-icons-round">history</span>Logs
-        </button>
-        <button class="tab-btn" onclick="nav('settings')" id="m-settings">
-            <span class="material-icons-round">settings</span>Config
-        </button>
+        <button class="tab-btn active" onclick="nav('dash')" id="m-dash"><span class="material-icons-round">dashboard</span>Dash</button>
+        <button class="tab-btn" onclick="nav('logs')" id="m-logs"><span class="material-icons-round">history</span>Logs</button>
+        <button class="tab-btn" onclick="nav('settings')" id="m-settings"><span class="material-icons-round">settings</span>Config</button>
     </div>
 
     <script>
@@ -246,43 +153,23 @@
         function nav(id) {
             document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
             document.getElementById(id).classList.add('active');
-            
-            // Update Active State for Desktop & Mobile
             document.querySelectorAll('.nav-item, .tab-btn').forEach(e => e.classList.remove('active'));
             if(document.getElementById('d-'+id)) document.getElementById('d-'+id).classList.add('active');
             if(document.getElementById('m-'+id)) document.getElementById('m-'+id).classList.add('active');
-
-            if(id === 'dash') fetchDash();
-            if(id === 'logs') fetchLogs();
-            if(id === 'settings') loadSettings();
+            if(id === 'dash') fetchDash(); if(id === 'logs') fetchLogs(); if(id === 'settings') loadSettings();
         }
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.textContent = msg; t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 3000);
-        }
-
-        // --- DASHBOARD ---
+        // DASHBOARD
         function getNvrNum(ip) { return ip.split('.').pop(); }
         function toggleNvr(head) { head.parentElement.classList.toggle('expanded'); }
-
         async function fetchDash() {
-            const res = await fetch(`${API}/cameras`);
-            const cams = await res.json();
-            
-            // Stats
-            const online = cams.filter(c=>c.status==='Online').length;
+            const res = await fetch(`${API}/cameras`); const cams = await res.json();
             document.getElementById('total-cnt').textContent = cams.length;
-            document.getElementById('online-cnt').textContent = online;
-            document.getElementById('offline-cnt').textContent = cams.length - online;
-
-            // Group
-            const groups = {};
-            cams.forEach(c => { if(!groups[c.nvr_ip]) groups[c.nvr_ip] = []; groups[c.nvr_ip].push(c); });
+            document.getElementById('online-cnt').textContent = cams.filter(c=>c.status==='Online').length;
+            document.getElementById('offline-cnt').textContent = cams.filter(c=>c.status!=='Online').length;
             
-            const container = document.getElementById('nvr-container');
-            container.innerHTML = '';
+            const groups = {}; cams.forEach(c => { if(!groups[c.nvr_ip]) groups[c.nvr_ip] = []; groups[c.nvr_ip].push(c); });
+            const container = document.getElementById('nvr-container'); container.innerHTML = '';
             
             Object.keys(groups).sort((a,b) => parseInt(getNvrNum(a)) - parseInt(getNvrNum(b))).forEach(ip => {
                 const list = groups[ip];
@@ -293,80 +180,60 @@
                 let cards = '';
                 list.sort((a,b)=>parseInt(a.channel_id)-parseInt(b.channel_id)).forEach(c => {
                     const st = c.status === 'Online' ? 'online' : 'offline';
-                    cards += `
-                    <div class="cam-card ${st} imp-${c.importance}" title="${c.ip}" onclick="cycleImp(${c.id}, ${c.importance})">
-                        <div class="status-dot"></div>
-                        <div class="cam-info">
-                            <div class="cam-name">${c.name}</div>
-                            <div class="cam-id">N${nvrNum}C${c.channel_id}</div>
-                        </div>
-                    </div>`;
+                    cards += `<div class="cam-card ${st} imp-${c.importance}" title="Channel ${c.channel_id} | ${c.ip}" onclick="cycleImp(${c.id}, ${c.importance})">
+                        <div class="status-dot"></div><div class="cam-name">${c.name}</div></div>`;
                 });
-
-                container.innerHTML += `
-                <div class="nvr-group expanded">
-                    <div class="nvr-header" onclick="toggleNvr(this)">
-                        <div class="nvr-title">
-                            <span class="material-icons-round" style="color:${color}">dns</span>
-                            NVR ${nvrNum} <span class="nvr-tag">${ip}</span>
-                        </div>
-                        <div style="font-size:12px; color:#777">${nvrOn}/${list.length}</div>
-                    </div>
-                    <div class="nvr-content">${cards}</div>
-                </div>`;
+                container.innerHTML += `<div class="nvr-group expanded"><div class="nvr-header" onclick="toggleNvr(this)">
+                    <div class="nvr-title"><span class="material-icons-round" style="color:${color}">dns</span> NVR ${nvrNum} <span class="nvr-tag">${ip}</span></div>
+                    <div style="font-size:12px; color:#777">${nvrOn}/${list.length}</div></div><div class="nvr-content">${cards}</div></div>`;
             });
         }
+        async function cycleImp(id, curr) { let n = curr+1; if(n>3)n=1; await fetch(`${API}/cameras/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({importance:n})}); fetchDash(); }
 
-        async function cycleImp(id, curr) {
-            let next = curr + 1; if(next > 3) next = 1;
-            await fetch(`${API}/cameras/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({importance:next})});
-            fetchDash();
+        // LOGS
+        async function fetchLogs() {
+            const q = document.getElementById('logSearch').value;
+            const res = await fetch(`${API}/logs?q=${q}`); const logs = await res.json();
+            document.getElementById('log-list').innerHTML = logs.map(l => {
+                const clr = l.state === 'Error' || l.state === 'Failed' || l.state === 'Offline' ? 'var(--danger)' : 'var(--success)';
+                return `<tr><td class="log-time">${l.shamsi_date}</td><td class="log-type">${l.log_type}</td><td class="log-state" style="color:${clr}">${l.state}</td><td>${l.details}</td></tr>`;
+            }).join('');
         }
 
-        // --- SETTINGS ---
+        // SETTINGS
         async function loadSettings() {
-            const sRes = await fetch(`${API}/settings`);
-            settingsCache = await sRes.json();
-            renderConfig();
-            
-            const cRes = await fetch(`${API}/config/csv`);
-            document.getElementById('csvEditor').value = await cRes.text();
-            
-            const nRes = await fetch(`${API}/nvrs`);
-            const nvrs = await nRes.json();
-            document.getElementById('nvr-list').innerHTML = nvrs.map(n => `
-                <tr><td>${n.ip}</td><td>${n.user}</td><td style="text-align:right"><button class="btn btn-danger" style="padding:4px 8px" onclick="delNVR('${n.ip}')">×</button></td></tr>
-            `).join('');
+            const sRes = await fetch(`${API}/settings`); settingsCache = await sRes.json(); renderConfig();
+            const cRes = await fetch(`${API}/config/csv`); document.getElementById('csvEditor').value = await cRes.text();
+            const nRes = await fetch(`${API}/nvrs`); const nvrs = await nRes.json();
+            document.getElementById('nvr-list').innerHTML = nvrs.map(n => `<tr><td>${n.ip}</td><td>${n.user}</td><td style="text-align:right"><button class="btn" style="background:#333; padding:4px" onclick="delNVR('${n.ip}')">×</button></td></tr>`).join('');
+        }
+        
+        async function testConn(type) {
+            try {
+                const res = await fetch(`/api/test/${type}`, { method:'POST' });
+                const data = await res.json();
+                alert(res.ok ? "Test Passed!" : "Failed: " + data.detail);
+            } catch(e) { alert("Error: " + e); }
         }
 
         function renderConfig() {
-            const container = document.getElementById('config-container');
-            container.innerHTML = '';
-            
+            const container = document.getElementById('config-container'); container.innerHTML = '';
             const groups = {
-                'Notification Rules': ['MAIL_FIRST_ALERT_DELAY_MINUTES', 'MAIL_ALERT_FREQUENCY_MINUTES', 'TELEGRAM_FIRST_ALERT_DELAY_MINUTES', 'TELEGRAM_ALERT_FREQUENCY_MINUTES'],
-                'Email Config': ['MAIL_ENABLED', 'MAIL_SERVER', 'MAIL_PORT', 'MAIL_USER', 'MAIL_PASS', 'MAIL_RECIPIENTS'],
-                'Telegram Config': ['TELEGRAM_ENABLED', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_IDS']
+                'Email': ['MAIL_ENABLED', 'MAIL_SERVER', 'MAIL_PORT', 'MAIL_USER', 'MAIL_PASS', 'MAIL_RECIPIENTS', 'MAIL_FIRST_ALERT_DELAY_MINUTES', 'MAIL_ALERT_FREQUENCY_MINUTES', 'MAIL_MUTE_AFTER_N_ALERTS'],
+                'Telegram': ['TELEGRAM_ENABLED', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_IDS', 'TELEGRAM_PROXY', 'TELEGRAM_FIRST_ALERT_DELAY_MINUTES', 'TELEGRAM_ALERT_FREQUENCY_MINUTES', 'TELEGRAM_MUTE_AFTER_N_ALERTS']
             };
-
             for (const [title, keys] of Object.entries(groups)) {
-                let html = `<div class="config-card"><div class="config-title">${title}</div>`;
+                let html = `<div class="config-card"><div class="config-title"><span>${title}</span> <button class="btn" style="padding:2px 8px; font-size:10px" onclick="testConn('${title.toLowerCase()}')">Test</button></div>`;
                 keys.forEach(k => {
-                    const item = settingsCache.find(s => s.key === k);
-                    if (!item) return;
-                    
-                    const label = k.split('_').slice(0,3).join(' ').toLowerCase().replace(/\b\w/g, c=>c.toUpperCase());
-                    const isBool = k.includes('ENABLED');
-                    const isPass = k.includes('PASS') || k.includes('TOKEN');
-                    
-                    if (isBool) {
-                        html += `<div class="toggle-row"><span>${label}</span><label class="switch"><input type="checkbox" id="${k}" ${item.value==='true'?'checked':''}><span class="slider"></span></label></div>`;
+                    const item = settingsCache.find(s => s.key === k); if(!item) return;
+                    const label = k.split('_').slice(1).join(' ').toLowerCase().replace(/\b\w/g, c=>c.toUpperCase()).replace('Enabled','Active');
+                    if (k.endsWith('_ENABLED')) {
+                        html += `<div style="display:flex; justify-content:space-between; margin-bottom:10px"><span>${label}</span><input type="checkbox" id="${k}" ${item.value==='true'?'checked':''}></div>`;
                     } else {
-                        html += `<div class="form-row"><label class="form-label">${label}</label><input id="${k}" class="form-input" type="${isPass?'password':'text'}" value="${item.value||''}"></div>`;
+                        html += `<div style="margin-bottom:10px"><label style="font-size:11px; color:#777">${label}</label><input id="${k}" class="form-input" style="margin-bottom:0" value="${item.value||''}" type="${k.includes('PASS')||k.includes('TOKEN')?'password':'text'}"></div>`;
                     }
                 });
-                html += `</div>`;
-                container.innerHTML += html;
+                container.innerHTML += html + `</div>`;
             }
         }
 
@@ -374,50 +241,22 @@
             for (const s of settingsCache) {
                 const el = document.getElementById(s.key);
                 if (el) {
-                    let val = el.value;
-                    if (el.type === 'checkbox') val = el.checked ? 'true' : 'false';
-                    if (val !== s.value) {
-                        await fetch(`${API}/settings/${s.key}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key:s.key, value:val})});
-                    }
+                    let val = el.value; if(el.type === 'checkbox') val = el.checked ? 'true' : 'false';
+                    if(val !== s.value) await fetch(`${API}/settings/${s.key}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key:s.key, value:val})});
                 }
             }
             await fetch(`${API}/config/csv`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:document.getElementById('csvEditor').value})});
-            showToast("Saved settings & CSV");
+            const t = document.getElementById('toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000);
         }
-
-        async function apply() {
-            await saveAll();
-            await fetch(`${API}/monitor/restart`, { method:'POST' });
-            showToast("Monitor Restarted!");
-        }
-
+        async function apply() { await saveAll(); await fetch(`${API}/monitor/restart`, { method:'POST' }); location.reload(); }
         async function addNVR() {
-            const ip = document.getElementById('nvrIp').value;
-            const user = document.getElementById('nvrUser').value;
-            const pass = document.getElementById('nvrPass').value;
-            if(!ip || !user) return alert("IP/User required");
-            await fetch(`${API}/nvrs`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ip, user, password:pass||null, enabled:true})});
-            document.getElementById('nvrIp').value = '';
+            const ip=document.getElementById('nvrIp').value; const u=document.getElementById('nvrUser').value; const p=document.getElementById('nvrPass').value;
+            await fetch(`${API}/nvrs`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ip, user:u, password:p||null, enabled:true})});
             loadSettings();
         }
+        async function delNVR(ip) { if(confirm('Del?')) { await fetch(`${API}/nvrs/${ip}`, {method:'DELETE'}); loadSettings(); } }
 
-        async function delNVR(ip) {
-            if(confirm('Delete?')) { await fetch(`${API}/nvrs/${ip}`, {method:'DELETE'}); loadSettings(); }
-        }
-
-        async function fetchLogs() {
-            const q = document.getElementById('logSearch').value;
-            const res = await fetch(`${API}/logs?q=${q}`);
-            const logs = await res.json();
-            document.getElementById('log-list').innerHTML = logs.map(l => {
-                const clr = l.level === 'ERROR' ? '#ef4444' : '#22c55e';
-                return `<tr><td class="log-time">${l.shamsi_date}</td><td style="color:${clr}; font-weight:bold">${l.level}</td><td>${l.camera_name||'-'} ${l.message}</td></tr>`;
-            }).join('');
-        }
-
-        // Init
-        nav('dash');
-        setInterval(fetchDash, 5000);
+        nav('dash'); setInterval(fetchDash, 5000);
     </script>
 </body>
 </html>

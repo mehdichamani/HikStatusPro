@@ -26,11 +26,14 @@ def load_csv_names():
         except: pass
     return mapping
 
+def log_event(session, l_type, state, details):
+    session.add(Log(log_type=l_type, state=state, details=details))
+
 def poll_nvr_thread(nvr_data):
     ip, user, password = nvr_data
     url = f"http://{ip}/ISAPI/ContentMgmt/InputProxy/channels/status"
     try:
-        resp = requests.get(url, auth=HTTPDigestAuth(user, password), timeout=6)
+        resp = requests.get(url, auth=HTTPDigestAuth(user, password), timeout=6, proxies={})
         if resp.status_code == 200:
             root = ET.fromstring(resp.content)
             namespace = {'ns': 'http://www.hikvision.com/ver20/XMLSchema'}
@@ -47,55 +50,83 @@ def poll_nvr_thread(nvr_data):
         return ("FAIL", str(e))
 
 async def process_batch_alerts(session, cams_to_check):
-    """Checks all cameras and returns lists of messages to send."""
-    alerts = []
-    recoveries = []
+    # Separate lists because they have different rules/counters
+    tele_alerts = []
+    mail_alerts = []
+    tele_recoveries = []
+    mail_recoveries = []
+    
     now = datetime.now()
 
     # Load Settings
     mail_delay = int(get_setting(session, "MAIL_FIRST_ALERT_DELAY_MINUTES", 1))
     mail_freq = int(get_setting(session, "MAIL_ALERT_FREQUENCY_MINUTES", 60))
+    mail_mute = int(get_setting(session, "MAIL_MUTE_AFTER_N_ALERTS", 3))
+
     tele_delay = int(get_setting(session, "TELEGRAM_FIRST_ALERT_DELAY_MINUTES", 1))
     tele_freq = int(get_setting(session, "TELEGRAM_ALERT_FREQUENCY_MINUTES", 30))
+    tele_mute = int(get_setting(session, "TELEGRAM_MUTE_AFTER_N_ALERTS", 3))
 
     for cam in cams_to_check:
         # --- RECOVERY LOGIC ---
         if cam.status == "Online":
-            # If it was offline and we haven't reset the counters yet, it means it just came back
-            if cam.mail_alert_count > 0 or cam.telegram_alert_count > 0:
-                downtime = now - (cam.last_online or now) # approximate since last_online is update on online
-                recoveries.append(f"✅ {cam.name} is back Online")
-                
-                # Reset counters
-                cam.mail_alert_count = 0
+            # Check Telegram Recovery
+            if cam.telegram_alert_count > 0:
+                tele_recoveries.append(f"✅ {cam.name} is back Online")
                 cam.telegram_alert_count = 0
-                session.add(cam)
+            
+            # Check Mail Recovery
+            if cam.mail_alert_count > 0:
+                mail_recoveries.append(f"{cam.name} is back Online")
+                cam.mail_alert_count = 0
+                
+            session.add(cam)
             continue
 
         # --- FAILURE LOGIC ---
         downtime = now - (cam.last_online or now)
         downtime_mins = int(downtime.total_seconds() / 60)
 
-        # Telegram Rules
+        # 1. Telegram Rules
         send_tele = False
-        if cam.telegram_alert_count == 0:
-            if downtime_mins >= tele_delay: send_tele = True
-        else:
-            last = cam.telegram_last_alert or now
-            if (now - last).total_seconds() / 60 >= tele_freq: send_tele = True
+        if cam.telegram_alert_count < tele_mute:
+            if cam.telegram_alert_count == 0:
+                if downtime_mins >= tele_delay: send_tele = True
+            else:
+                last = cam.telegram_last_alert or now
+                if (now - last).total_seconds() / 60 >= tele_freq: send_tele = True
         
         if send_tele:
-            alerts.append(f"🚨 {cam.name} ({downtime_mins}m)")
+            tele_alerts.append(f"🚨 {cam.name} ({downtime_mins}m)")
             cam.telegram_alert_count += 1
             cam.telegram_last_alert = now
-            session.add(cam)
 
-    return alerts, recoveries
+        # 2. Email Rules
+        send_mail = False
+        if cam.mail_alert_count < mail_mute:
+            if cam.mail_alert_count == 0:
+                if downtime_mins >= mail_delay: send_mail = True
+            else:
+                last = cam.mail_last_alert or now
+                if (now - last).total_seconds() / 60 >= mail_freq: send_mail = True
+        
+        if send_mail:
+            mail_alerts.append(f"{cam.name} is offline for {downtime_mins} mins")
+            cam.mail_alert_count += 1
+            cam.mail_last_alert = now
+
+        session.add(cam)
+
+    return tele_alerts, mail_alerts, tele_recoveries, mail_recoveries
 
 async def start_monitor_loop():
     print("👀 Monitor loop started...")
     last_summary_hour = -1
     
+    with Session(engine) as session:
+        log_event(session, "Service", "Started", "Monitor loop initialized")
+        session.commit()
+
     while True:
         try:
             name_map = load_csv_names()
@@ -106,7 +137,6 @@ async def start_monitor_loop():
                 await asyncio.sleep(10)
                 continue
             
-            # Parallel Polling
             tasks = [asyncio.to_thread(poll_nvr_thread, (n.ip, n.user, n.password)) for n in nvrs]
             results = await asyncio.gather(*tasks)
 
@@ -116,7 +146,7 @@ async def start_monitor_loop():
                 for nvr_obj, res in zip(nvrs, results):
                     status, payload = res
                     if status == "FAIL":
-                        session.add(Log(level="ERROR", message=f"NVR {nvr_obj.ip} Error: {payload}"))
+                        log_event(session, "Camera", "Error", f"NVR {nvr_obj.ip} Failed: {payload}")
                         continue
                         
                     for d in payload:
@@ -133,8 +163,9 @@ async def start_monitor_loop():
                         else:
                             if csv_name and db_cam.name != csv_name: db_cam.name = csv_name
                             if db_cam.ip != d['ip']: db_cam.ip = d['ip']
+                            
                             if db_cam.status != new_status:
-                                session.add(Log(level="WARNING" if new_status=="Offline" else "SUCCESS", camera_name=db_cam.name, message=f"Camera is now {new_status}"))
+                                log_event(session, "Camera", new_status, f"{db_cam.name} ({db_cam.ip})")
                                 db_cam.status = new_status
                             
                             if d['online']: db_cam.last_online = datetime.now()
@@ -142,30 +173,53 @@ async def start_monitor_loop():
                         
                         cams_processed.append(db_cam)
 
-                # --- BATCH ALERTS ---
-                alerts, recoveries = await process_batch_alerts(session, cams_processed)
+                # --- PROCESS NOTIFICATIONS ---
+                t_alerts, m_alerts, t_recov, m_recov = await process_batch_alerts(session, cams_processed)
                 
-                # Send Batch Telegram
-                if alerts:
-                    await asyncio.to_thread(send_telegram_batch, "⚠️ Cameras Offline", alerts)
-                if recoveries:
-                    await asyncio.to_thread(send_telegram_batch, "✅ Cameras Recovered", recoveries)
+                # 1. Telegram
+                if t_alerts:
+                    res = await asyncio.to_thread(send_telegram_batch, "⚠️ Cameras Offline", t_alerts)
+                    log_event(session, "Telegram", "Sent" if res is True else "Failed", f"Sent {len(t_alerts)} alerts" if res is True else str(res))
+                if t_recov:
+                    await asyncio.to_thread(send_telegram_batch, "✅ Cameras Recovered", t_recov)
+
+                # 2. Email (THIS WAS MISSING BEFORE)
+                if m_alerts:
+                    res = await asyncio.to_thread(send_email_batch, "⚠️ Cameras Offline Alert", m_alerts)
+                    log_event(session, "Mail", "Sent" if res is True else "Failed", f"Sent {len(m_alerts)} alerts" if res is True else str(res))
+                if m_recov:
+                    await asyncio.to_thread(send_email_batch, "✅ Cameras Recovered", m_recov)
 
                 # --- HOURLY SUMMARY ---
                 now = datetime.now()
                 if now.minute == 0 and now.hour != last_summary_hour:
-                    offline_cams = [c for c in cams_processed if c.status == "Offline"]
-                    if offline_cams:
-                        lines = [f"{c.name} ({c.ip})" for c in offline_cams]
-                        await asyncio.to_thread(send_telegram_batch, f"📊 Hourly Summary ({len(lines)} Offline)", lines)
+                    hour_start = now.replace(minute=0, second=0, microsecond=0)
+                    summary_lines = []
+                    
+                    for c in cams_processed:
+                        if c.status == "Offline":
+                            offline_since = c.last_online or now
+                            overlap_start = max(hour_start, offline_since)
+                            minutes_down = int((now - overlap_start).total_seconds() / 60)
+                            if minutes_down > 0:
+                                summary_lines.append(f"{c.name}: {minutes_down}m")
+
+                    if summary_lines:
+                        header = f"📊 Hourly Downtime Summary ({now.strftime('%H:00')})"
+                        await asyncio.to_thread(send_telegram_batch, header, summary_lines)
+                        log_event(session, "Telegram", "Sent", "Hourly Summary")
+                    
                     last_summary_hour = now.hour
 
                 session.commit()
             
-            # FIXED POLL INTERVAL
             await asyncio.sleep(60) 
 
-        except asyncio.CancelledError: break
+        except asyncio.CancelledError:
+            with Session(engine) as session:
+                log_event(session, "Service", "Stopped", "Monitor loop cancelled")
+                session.commit()
+            break
         except Exception as e: 
             print(f"Error: {e}")
             await asyncio.sleep(5)

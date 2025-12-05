@@ -10,3 +10,4 @@ services:
       - ./camera_names.csv:/app/camera_names.csv
     environment:
       - TZ=Asia/Tehran
+      - PYTHONUNBUFFERED=1      

@@ -27,9 +27,9 @@ class Camera(SQLModel, table=True):
 class Log(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.now)
-    level: str
-    camera_name: Optional[str] = None
-    message: str
+    log_type: str  # Camera, Mail, Telegram, Service
+    state: str     # Online/Offline, Sent/Failed, Started/Stopped
+    details: str   # Detail message
 
 class Settings(SQLModel, table=True):
     key: str = Field(primary_key=True)
