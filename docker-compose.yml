@@ -4,7 +4,7 @@ services:
     container_name: hikstatus_v2
     restart: always
     ports:
-      - "8000:8000"
+      - "5423:5423"
     volumes:
       - ./data:/app/data
       - ./camera_names.csv:/app/camera_names.csv

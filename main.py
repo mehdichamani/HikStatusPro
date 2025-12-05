@@ -136,23 +136,41 @@ def save_csv(payload: CsvContent):
 @app.get("/api/logs")
 def search_logs(q: str = None, limit: int = 50, offset: int = 0, session: Session = Depends(get_session)):
     query = select(Log).order_by(Log.timestamp.desc()).offset(offset).limit(limit)
-    if q: query = query.where(col(Log.details).contains(q) | col(Log.log_type).contains(q))
+    if q: 
+        # Handle "Type" filtering or generic search
+        if q.lower() in ['camera', 'telegram', 'mail', 'service']:
+            query = query.where(col(Log.log_type) == q)
+        else:
+            query = query.where(col(Log.details).contains(q) | col(Log.log_type).contains(q))
+    
     logs = session.exec(query).all()
+    
     output = []
+    # Persian months mapping
+    months = {1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد', 4: 'تیر', 5: 'مرداد', 6: 'شهریور', 7: 'مهر', 8: 'آبان', 9: 'آذر', 10: 'دی', 11: 'بهمن', 12: 'اسفند'}
+    # Persian days mapping
+    days = {'Sat': 'شنبه', 'Sun': 'یکشنبه', 'Mon': 'دوشنبه', 'Tue': 'سه‌شنبه', 'Wed': 'چهارشنبه', 'Thu': 'پنج‌شنبه', 'Fri': 'جمعه'}
+
     for l in logs:
         jd = jdatetime.datetime.fromgregorian(datetime=l.timestamp)
-        shamsi_str = jd.strftime("%Y/%m/%d %H:%M")
+        day_name = days[l.timestamp.strftime("%a")]
+        month_name = months[jd.month]
+        # Format: شنبه 15 آذر 1404 15:30
+        shamsi_str = f"{day_name} {jd.day} {month_name} {jd.year} {jd.strftime('%H:%M')}"
+        
         item = l.model_dump()
         item['shamsi_date'] = shamsi_str
+        
+        # Calculate downtime for logs if needed (rudimentary check)
+        # This is mostly visual; precise calculation is in reports
+        # If the detail string contains "Offline", we assume it's an event start
+        
         output.append(item)
     return output
 
-# --- NEW: STATS API ---
 def calculate_downtime(session, cam_id, hours):
     now = datetime.now()
     cutoff = now - timedelta(hours=hours)
-    
-    # Find events that overlap with the window [cutoff, now]
     events = session.exec(select(DowntimeEvent).where(
         DowntimeEvent.camera_id == cam_id,
         (DowntimeEvent.end_time == None) | (DowntimeEvent.end_time > cutoff)
@@ -160,37 +178,35 @@ def calculate_downtime(session, cam_id, hours):
     
     total_minutes = 0
     for e in events:
-        # Start: Max of event_start or window_start
         start = max(e.start_time, cutoff)
-        # End: Min of event_end or now
         end = min(e.end_time or now, now)
-        
         if end > start:
             total_minutes += (end - start).total_seconds() / 60
-            
     return int(total_minutes)
 
 @app.get("/api/stats/{cam_id}")
 def get_cam_stats(cam_id: int, session: Session = Depends(get_session)):
-    """Returns downtime for last 1h and 24h."""
     down_1h = calculate_downtime(session, cam_id, 1)
     down_24h = calculate_downtime(session, cam_id, 24)
     return {"down_1h": down_1h, "down_24h": down_24h}
 
 @app.get("/api/reports/overview")
 def get_reports(session: Session = Depends(get_session)):
-    """Returns aggregated stats for charts."""
     cameras = session.exec(select(Camera)).all()
-    data = []
+    list_1h = []
+    list_24h = []
+    
     for c in cameras:
         d1 = calculate_downtime(session, c.id, 1)
         d24 = calculate_downtime(session, c.id, 24)
-        if d1 > 0 or d24 > 0:
-            data.append({
-                "name": c.name,
-                "down_1h": d1,
-                "down_24h": d24
-            })
-    # Sort by highest downtime
-    data.sort(key=lambda x: x['down_24h'], reverse=True)
-    return data
+        
+        if d1 > 0:
+            list_1h.append({"name": c.name, "ip": c.ip, "mins": d1})
+        if d24 > 0:
+            list_24h.append({"name": c.name, "ip": c.ip, "mins": d24})
+            
+    # Sort Descending
+    list_1h.sort(key=lambda x: x['mins'], reverse=True)
+    list_24h.sort(key=lambda x: x['mins'], reverse=True)
+    
+    return {"last_1h": list_1h, "last_24h": list_24h}
