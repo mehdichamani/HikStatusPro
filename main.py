@@ -133,9 +133,11 @@ def save_csv(payload: CsvContent):
     return {"ok": True}
 
 @app.get("/api/logs")
-def search_logs(q: str = None, limit: int = 100, session: Session = Depends(get_session)):
-    query = select(Log).order_by(Log.timestamp.desc()).limit(limit)
-    if q: query = query.where(col(Log.details).contains(q) | col(Log.log_type).contains(q))
+def search_logs(q: str = None, limit: int = 50, offset: int = 0, session: Session = Depends(get_session)):
+    query = select(Log).order_by(Log.timestamp.desc()).offset(offset).limit(limit)
+    if q: 
+        query = query.where(col(Log.details).contains(q) | col(Log.log_type).contains(q))
+    
     logs = session.exec(query).all()
     
     output = []
