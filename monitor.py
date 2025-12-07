@@ -27,12 +27,10 @@ def load_csv_names():
     return mapping
 
 def log_event(session, l_type, state, details):
-    # We commit logs immediately so they appear even if the main loop crashes later
     try:
         session.add(Log(log_type=l_type, state=state, details=details))
         session.commit() 
-    except:
-        pass
+    except: pass
 
 def poll_nvr_thread(nvr_data):
     ip, user, password = nvr_data
@@ -61,6 +59,7 @@ async def process_batch_alerts(session, cams_to_check):
     mail_recoveries = []
     now = datetime.now()
 
+    # Load Settings
     mail_delay = int(get_setting(session, "MAIL_FIRST_ALERT_DELAY_MINUTES", 1))
     mail_freq = int(get_setting(session, "MAIL_ALERT_FREQUENCY_MINUTES", 60))
     mail_mute = int(get_setting(session, "MAIL_MUTE_AFTER_N_ALERTS", 3))
@@ -70,6 +69,7 @@ async def process_batch_alerts(session, cams_to_check):
     tele_mute = int(get_setting(session, "TELEGRAM_MUTE_AFTER_N_ALERTS", 3))
 
     for cam in cams_to_check:
+        # --- RECOVERY LOGIC ---
         if cam.status == "Online":
             if cam.telegram_alert_count > 0:
                 tele_recoveries.append(f"✅ {cam.name} is back Online")
@@ -80,35 +80,54 @@ async def process_batch_alerts(session, cams_to_check):
             session.add(cam)
             continue
 
+        # --- FAILURE LOGIC ---
         downtime = now - (cam.last_online or now)
         downtime_mins = int(downtime.total_seconds() / 60)
 
-        # Telegram
+        # 1. Telegram Rules
         send_tele = False
         if cam.telegram_alert_count < tele_mute:
             if cam.telegram_alert_count == 0:
-                if downtime_mins >= tele_delay: send_tele = True
+                # Importance Logic: Low (1) skips Delay, waits for Frequency
+                threshold = tele_delay
+                if cam.importance == 1: threshold = tele_freq
+                
+                if downtime_mins >= threshold: send_tele = True
             else:
                 last = cam.telegram_last_alert or now
                 if (now - last).total_seconds() / 60 >= tele_freq: send_tele = True
         
         if send_tele:
-            tele_alerts.append(f"🚨 {cam.name} ({downtime_mins}m)")
+            msg = f"🚨 {cam.name} ({downtime_mins}m)"
+            # Check if this is the last alert before muting
+            if cam.telegram_alert_count + 1 >= tele_mute:
+                msg += " 🔕(Muted)"
+            
+            tele_alerts.append(msg)
             cam.telegram_alert_count += 1
             cam.telegram_last_alert = now
             session.add(cam)
 
-        # Mail
+        # 2. Email Rules
         send_mail = False
         if cam.mail_alert_count < mail_mute:
             if cam.mail_alert_count == 0:
-                if downtime_mins >= mail_delay: send_mail = True
+                # Importance Logic: Low (1) skips Delay, waits for Frequency
+                threshold = mail_delay
+                if cam.importance == 1: threshold = mail_freq
+
+                if downtime_mins >= threshold: send_mail = True
             else:
                 last = cam.mail_last_alert or now
                 if (now - last).total_seconds() / 60 >= mail_freq: send_mail = True
         
         if send_mail:
-            mail_alerts.append(f"{cam.name} is offline for {downtime_mins} mins")
+            msg = f"{cam.name} is offline for {downtime_mins} mins"
+            # Check if this is the last alert before muting
+            if cam.mail_alert_count + 1 >= mail_mute:
+                msg += " <b>(Alerts Muted)</b>"
+                
+            mail_alerts.append(msg)
             cam.mail_alert_count += 1
             cam.mail_last_alert = now
             session.add(cam)
@@ -119,7 +138,6 @@ async def start_monitor_loop():
     print("👀 Monitor loop started...")
     last_summary_hour = -1
     
-    # Initial Log
     with Session(engine) as session:
         log_event(session, "Service", "Started", "Monitor loop initialized")
 
@@ -142,7 +160,6 @@ async def start_monitor_loop():
                 for nvr_obj, res in zip(nvrs, results):
                     status, payload = res
                     if status == "FAIL":
-                        # Use helper which commits immediately so we see the error!
                         log_event(session, "Camera", "Error", f"NVR {nvr_obj.ip} Failed: {payload}")
                         continue
                         
@@ -155,32 +172,22 @@ async def start_monitor_loop():
                         final_name = csv_name if csv_name else f"Ch {d['channel_id']}"
 
                         if not db_cam:
-                            # CREATE NEW CAMERA
                             db_cam = Camera(name=final_name, ip=d['ip'], nvr_ip=nvr_obj.ip, channel_id=d['channel_id'], status=new_status, last_online=datetime.now() if d['online'] else None)
                             session.add(db_cam)
-                            
-                            # --- CRITICAL FIX ---
-                            # We MUST flush here to get an ID for the camera
-                            # before we can create a DowntimeEvent linked to it.
                             session.flush() 
                             session.refresh(db_cam)
-                            
                             if new_status == "Offline":
                                 session.add(DowntimeEvent(camera_id=db_cam.id, start_time=datetime.now()))
                         else:
-                            # UPDATE EXISTING
                             if csv_name and db_cam.name != csv_name: db_cam.name = csv_name
                             if db_cam.ip != d['ip']: db_cam.ip = d['ip']
                             
                             if db_cam.status != new_status:
-                                # Commit log immediately
                                 log_event(session, "Camera", new_status, f"{db_cam.name} ({db_cam.ip})")
                                 db_cam.status = new_status
-                                
                                 if new_status == "Offline":
                                     session.add(DowntimeEvent(camera_id=db_cam.id, start_time=datetime.now()))
                                 elif new_status == "Online":
-                                    # Close open event
                                     open_evt = session.exec(select(DowntimeEvent).where(DowntimeEvent.camera_id == db_cam.id, DowntimeEvent.end_time == None)).first()
                                     if open_evt:
                                         open_evt.end_time = datetime.now()
@@ -191,7 +198,6 @@ async def start_monitor_loop():
                         
                         cams_processed.append(db_cam)
 
-                # Notifications
                 t_alerts, m_alerts, t_recov, m_recov = await process_batch_alerts(session, cams_processed)
                 
                 if t_alerts:
@@ -204,7 +210,6 @@ async def start_monitor_loop():
                 if m_recov:
                     await asyncio.to_thread(send_email_batch, "✅ Cameras Recovered", m_recov)
 
-                # Hourly Summary
                 now = datetime.now()
                 if now.minute == 0 and now.hour != last_summary_hour:
                     hour_start = now.replace(minute=0, second=0, microsecond=0)

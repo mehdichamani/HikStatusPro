@@ -32,7 +32,7 @@ def seed_defaults():
             ("TELEGRAM_ENABLED", "false", "Enable Telegram"),
             ("TELEGRAM_BOT_TOKEN", "", "Bot Token"),
             ("TELEGRAM_CHAT_IDS", "", "Chat IDs"),
-            ("TELEGRAM_PROXY", "", "Proxy URL (http://1.2.3.4:8080)"),
+            ("TELEGRAM_PROXY", "", "Proxy URL"),
             ("TELEGRAM_FIRST_ALERT_DELAY_MINUTES", "1", "Delay"),
             ("TELEGRAM_ALERT_FREQUENCY_MINUTES", "30", "Frequency"),
             ("TELEGRAM_MUTE_AFTER_N_ALERTS", "3", "Mute After N"),
@@ -62,10 +62,7 @@ def read_root(): return FileResponse('static/index.html')
 @app.post("/api/monitor/restart")
 async def restart_monitor():
     global monitor_task
-    if monitor_task:
-        monitor_task.cancel()
-        try: await monitor_task
-        except: pass
+    if monitor_task: monitor_task.cancel(); await asyncio.sleep(0.1)
     monitor_task = asyncio.create_task(start_monitor_loop())
     return {"status": "restarted"}
 
@@ -137,76 +134,64 @@ def save_csv(payload: CsvContent):
 def search_logs(q: str = None, limit: int = 50, offset: int = 0, session: Session = Depends(get_session)):
     query = select(Log).order_by(Log.timestamp.desc()).offset(offset).limit(limit)
     if q: 
-        # Handle "Type" filtering or generic search
-        if q.lower() in ['camera', 'telegram', 'mail', 'service']:
-            query = query.where(col(Log.log_type) == q)
-        else:
-            query = query.where(col(Log.details).contains(q) | col(Log.log_type).contains(q))
-    
+        if q in ['Camera','Telegram','Mail','Service']: query = query.where(col(Log.log_type) == q)
+        else: query = query.where(col(Log.details).contains(q) | col(Log.log_type).contains(q))
     logs = session.exec(query).all()
     
     output = []
-    # Persian months mapping
-    months = {1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد', 4: 'تیر', 5: 'مرداد', 6: 'شهریور', 7: 'مهر', 8: 'آبان', 9: 'آذر', 10: 'دی', 11: 'بهمن', 12: 'اسفند'}
-    # Persian days mapping
-    days = {'Sat': 'شنبه', 'Sun': 'یکشنبه', 'Mon': 'دوشنبه', 'Tue': 'سه‌شنبه', 'Wed': 'چهارشنبه', 'Thu': 'پنج‌شنبه', 'Fri': 'جمعه'}
-
     for l in logs:
         jd = jdatetime.datetime.fromgregorian(datetime=l.timestamp)
-        day_name = days[l.timestamp.strftime("%a")]
-        month_name = months[jd.month]
-        # Format: شنبه 15 آذر 1404 15:30
-        shamsi_str = f"{day_name} {jd.day} {month_name} {jd.year} {jd.strftime('%H:%M')}"
+        months = {1:'فروردین',2:'اردیبهشت',3:'خرداد',4:'تیر',5:'مرداد',6:'شهریور',7:'مهر',8:'آبان',9:'آذر',10:'دی',11:'بهمن',12:'اسفند'}
+        days = {'Sat':'شنبه','Sun':'یکشنبه','Mon':'دوشنبه','Tue':'سه‌شنبه','Wed':'چهارشنبه','Thu':'پنج‌شنبه','Fri':'جمعه'}
+        shamsi = f"{days[l.timestamp.strftime('%a')]} {jd.day} {months[jd.month]} {jd.year} {jd.strftime('%H:%M')}"
         
         item = l.model_dump()
-        item['shamsi_date'] = shamsi_str
-        
-        # Calculate downtime for logs if needed (rudimentary check)
-        # This is mostly visual; precise calculation is in reports
-        # If the detail string contains "Offline", we assume it's an event start
-        
+        item['shamsi_date'] = shamsi
         output.append(item)
     return output
 
-def calculate_downtime(session, cam_id, hours):
-    now = datetime.now()
-    cutoff = now - timedelta(hours=hours)
+# --- REPORT LOGIC ---
+def calculate_downtime_range(session, cam_id, start_ts, end_ts):
+    # Find events that overlap with [start, end]
     events = session.exec(select(DowntimeEvent).where(
         DowntimeEvent.camera_id == cam_id,
-        (DowntimeEvent.end_time == None) | (DowntimeEvent.end_time > cutoff)
+        DowntimeEvent.start_time < end_ts, # Started before window ends
+        (DowntimeEvent.end_time == None) | (DowntimeEvent.end_time > start_ts) # Ended after window starts
     )).all()
     
     total_minutes = 0
+    now = datetime.now()
+    
     for e in events:
-        start = max(e.start_time, cutoff)
-        end = min(e.end_time or now, now)
-        if end > start:
-            total_minutes += (end - start).total_seconds() / 60
+        # The intersection of [e.start, e.end] and [window.start, window.end]
+        e_end = e.end_time or now
+        overlap_start = max(e.start_time, start_ts)
+        overlap_end = min(e_end, end_ts)
+        
+        if overlap_end > overlap_start:
+            total_minutes += (overlap_end - overlap_start).total_seconds() / 60
+            
     return int(total_minutes)
 
 @app.get("/api/stats/{cam_id}")
 def get_cam_stats(cam_id: int, session: Session = Depends(get_session)):
-    down_1h = calculate_downtime(session, cam_id, 1)
-    down_24h = calculate_downtime(session, cam_id, 24)
-    return {"down_1h": down_1h, "down_24h": down_24h}
+    now = datetime.now()
+    d1 = calculate_downtime_range(session, cam_id, now - timedelta(hours=1), now)
+    d24 = calculate_downtime_range(session, cam_id, now - timedelta(hours=24), now)
+    return {"down_1h": d1, "down_24h": d24}
 
-@app.get("/api/reports/overview")
-def get_reports(session: Session = Depends(get_session)):
+@app.get("/api/reports/generate")
+def generate_report(start: float, end: float, session: Session = Depends(get_session)):
+    start_dt = datetime.fromtimestamp(start)
+    end_dt = datetime.fromtimestamp(end)
+    
     cameras = session.exec(select(Camera)).all()
-    list_1h = []
-    list_24h = []
+    report_data = []
     
     for c in cameras:
-        d1 = calculate_downtime(session, c.id, 1)
-        d24 = calculate_downtime(session, c.id, 24)
-        
-        if d1 > 0:
-            list_1h.append({"name": c.name, "ip": c.ip, "mins": d1})
-        if d24 > 0:
-            list_24h.append({"name": c.name, "ip": c.ip, "mins": d24})
+        mins = calculate_downtime_range(session, c.id, start_dt, end_dt)
+        if mins > 0:
+            report_data.append({"name": c.name, "ip": c.ip, "mins": mins})
             
-    # Sort Descending
-    list_1h.sort(key=lambda x: x['mins'], reverse=True)
-    list_24h.sort(key=lambda x: x['mins'], reverse=True)
-    
-    return {"last_1h": list_1h, "last_24h": list_24h}
+    report_data.sort(key=lambda x: x['mins'], reverse=True)
+    return report_data
