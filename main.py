@@ -27,16 +27,15 @@ def seed_defaults():
             ("MAIL_PASS", "password", "Pass"),
             ("MAIL_RECIPIENTS", "admin@example.com", "Recipients"),
             ("MAIL_FIRST_ALERT_DELAY_MINUTES", "1", "Normal Delay"),
-            ("MAIL_LOW_IMPORTANCE_DELAY_MINUTES", "30", "Low Imp. Delay"), # NEW
+            ("MAIL_LOW_IMPORTANCE_DELAY_MINUTES", "30", "Low Imp. Delay"),
             ("MAIL_ALERT_FREQUENCY_MINUTES", "60", "Frequency"),
             ("MAIL_MUTE_AFTER_N_ALERTS", "3", "Mute After N"),
-            
             ("TELEGRAM_ENABLED", "false", "Enable Telegram"),
             ("TELEGRAM_BOT_TOKEN", "", "Bot Token"),
             ("TELEGRAM_CHAT_IDS", "", "Chat IDs"),
             ("TELEGRAM_PROXY", "", "Proxy URL"),
             ("TELEGRAM_FIRST_ALERT_DELAY_MINUTES", "1", "Normal Delay"),
-            ("TELEGRAM_LOW_IMPORTANCE_DELAY_MINUTES", "15", "Low Imp. Delay"), # NEW
+            ("TELEGRAM_LOW_IMPORTANCE_DELAY_MINUTES", "15", "Low Imp. Delay"),
             ("TELEGRAM_ALERT_FREQUENCY_MINUTES", "30", "Frequency"),
             ("TELEGRAM_MUTE_AFTER_N_ALERTS", "3", "Mute After N"),
         ]
@@ -57,10 +56,14 @@ async def lifespan(app: FastAPI):
     except: pass
 
 app = FastAPI(lifespan=lifespan)
+
+# Serve Static Assets (CSS, JS)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Serve Index HTML
 @app.get("/")
-def read_root(): return FileResponse('static/index.html')
+def read_root(): 
+    return FileResponse('static/index.html')
 
 @app.post("/api/monitor/restart")
 async def restart_monitor():
@@ -156,24 +159,20 @@ def search_logs(q: str = None, limit: int = 50, offset: int = 0, session: Sessio
         output.append(item)
     return output
 
-# --- REPORT LOGIC ---
 def calculate_downtime_range(session, cam_id, start_ts, end_ts):
     events = session.exec(select(DowntimeEvent).where(
         DowntimeEvent.camera_id == cam_id,
         DowntimeEvent.start_time < end_ts,
         (DowntimeEvent.end_time == None) | (DowntimeEvent.end_time > start_ts)
     )).all()
-    
     total_minutes = 0
     now = datetime.now()
-    
     for e in events:
         e_end = e.end_time or now
         overlap_start = max(e.start_time, start_ts)
         overlap_end = min(e_end, end_ts)
         if overlap_end > overlap_start:
             total_minutes += (overlap_end - overlap_start).total_seconds() / 60
-            
     return int(total_minutes)
 
 @app.get("/api/stats/{cam_id}")
