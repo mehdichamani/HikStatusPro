@@ -26,14 +26,17 @@ def seed_defaults():
             ("MAIL_USER", "email@gmail.com", "User"),
             ("MAIL_PASS", "password", "Pass"),
             ("MAIL_RECIPIENTS", "admin@example.com", "Recipients"),
-            ("MAIL_FIRST_ALERT_DELAY_MINUTES", "1", "Delay"),
+            ("MAIL_FIRST_ALERT_DELAY_MINUTES", "1", "Normal Delay"),
+            ("MAIL_LOW_IMPORTANCE_DELAY_MINUTES", "30", "Low Imp. Delay"), # NEW
             ("MAIL_ALERT_FREQUENCY_MINUTES", "60", "Frequency"),
             ("MAIL_MUTE_AFTER_N_ALERTS", "3", "Mute After N"),
+            
             ("TELEGRAM_ENABLED", "false", "Enable Telegram"),
             ("TELEGRAM_BOT_TOKEN", "", "Bot Token"),
             ("TELEGRAM_CHAT_IDS", "", "Chat IDs"),
             ("TELEGRAM_PROXY", "", "Proxy URL"),
-            ("TELEGRAM_FIRST_ALERT_DELAY_MINUTES", "1", "Delay"),
+            ("TELEGRAM_FIRST_ALERT_DELAY_MINUTES", "1", "Normal Delay"),
+            ("TELEGRAM_LOW_IMPORTANCE_DELAY_MINUTES", "15", "Low Imp. Delay"), # NEW
             ("TELEGRAM_ALERT_FREQUENCY_MINUTES", "30", "Frequency"),
             ("TELEGRAM_MUTE_AFTER_N_ALERTS", "3", "Mute After N"),
         ]
@@ -62,7 +65,10 @@ def read_root(): return FileResponse('static/index.html')
 @app.post("/api/monitor/restart")
 async def restart_monitor():
     global monitor_task
-    if monitor_task: monitor_task.cancel(); await asyncio.sleep(0.1)
+    if monitor_task:
+        monitor_task.cancel()
+        try: await monitor_task
+        except: pass
     monitor_task = asyncio.create_task(start_monitor_loop())
     return {"status": "restarted"}
 
@@ -152,22 +158,19 @@ def search_logs(q: str = None, limit: int = 50, offset: int = 0, session: Sessio
 
 # --- REPORT LOGIC ---
 def calculate_downtime_range(session, cam_id, start_ts, end_ts):
-    # Find events that overlap with [start, end]
     events = session.exec(select(DowntimeEvent).where(
         DowntimeEvent.camera_id == cam_id,
-        DowntimeEvent.start_time < end_ts, # Started before window ends
-        (DowntimeEvent.end_time == None) | (DowntimeEvent.end_time > start_ts) # Ended after window starts
+        DowntimeEvent.start_time < end_ts,
+        (DowntimeEvent.end_time == None) | (DowntimeEvent.end_time > start_ts)
     )).all()
     
     total_minutes = 0
     now = datetime.now()
     
     for e in events:
-        # The intersection of [e.start, e.end] and [window.start, window.end]
         e_end = e.end_time or now
         overlap_start = max(e.start_time, start_ts)
         overlap_end = min(e_end, end_ts)
-        
         if overlap_end > overlap_start:
             total_minutes += (overlap_end - overlap_start).total_seconds() / 60
             
@@ -184,14 +187,11 @@ def get_cam_stats(cam_id: int, session: Session = Depends(get_session)):
 def generate_report(start: float, end: float, session: Session = Depends(get_session)):
     start_dt = datetime.fromtimestamp(start)
     end_dt = datetime.fromtimestamp(end)
-    
     cameras = session.exec(select(Camera)).all()
     report_data = []
-    
     for c in cameras:
         mins = calculate_downtime_range(session, c.id, start_dt, end_dt)
         if mins > 0:
             report_data.append({"name": c.name, "ip": c.ip, "mins": mins})
-            
     report_data.sort(key=lambda x: x['mins'], reverse=True)
     return report_data

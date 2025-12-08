@@ -35,38 +35,36 @@
         .nvr-header:hover { background: #222; }
         .nvr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; padding: 12px; background: var(--border); border-top: 1px solid var(--border); }
         
-        /* --- CARDS (NEW STYLE) --- */
+        /* --- CARDS --- */
         .cam-card { width: 100%; height: 50px; position: relative; perspective: 600px; cursor: pointer; }
         .cam-inner { width: 100%; height: 100%; position: relative; transition: transform 0.4s; transform-style: preserve-3d; }
         .cam-card:hover .cam-inner { transform: rotateX(180deg); }
         
-        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; background: #000; border: 1px solid #1a1a1a; }
+        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }
         
         /* Front Face */
         .front { justify-content: flex-start; gap: 10px; }
         
-        /* STATE: OFFLINE (Red Background) */
-        .off .front { background-color: #c91111 !important; border-color: var(--danger); text-color: #ff0000; }
-        
-        /* STATE: ONLINE (Black Background) */
-        .on .front { background: #000; }
+        /* STATUS COLORS (The red background fix) */
+        .status-offline .front { background: #450a0a !important; border-color: var(--danger) !important; }
+        .status-online .front { background: rgba(27, 51, 32, 0.3); border-color: rgba(129, 199, 132, 0.1); }
 
         /* Back Face */
         .back { transform: rotateX(180deg); background: #222; justify-content: center; flex-direction: column; font-size: 11px; color: var(--primary); font-family: 'JetBrains Mono', monospace; border: 1px solid var(--border); }
 
-        /* IMPORTANCE STYLING */
-        /* Critical (3): Blue Border ALL sides */
+        /* Importance Styling */
+        /* Critical (3): Blue Border on the specific face element */
         .front.imp-3 { border: 2px solid var(--primary) !important; }
-        
-        /* Low (1): Gray/Dimmed Text */
-        .front.imp-1 .cam-name { color: #555; }
-        
-        /* Normal (2): Standard (Black border defined in .face) */
+        /* Low (1): Dimmed Text */
+        .front.imp-1 { opacity: 0.6; }
+        .front.imp-1 .cam-name { font-weight: 400; color: #888; }
 
-        .cam-name { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        /* NO DOT (As requested) */
-        .dot { display: none; }
+        .cam-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        /* Remove status dot visibility inside offline cards if background is red enough, but keeping for now per earlier request for "dot" removal, you said "not red green dot" */
+        /* Hiding dot for offline cards since background is red */
+        .status-offline .dot { display: none; }
+        .status-online .dot { background: var(--success); box-shadow: 0 0 8px rgba(129, 199, 132, 0.4); }
 
         /* SEGMENT LAYOUT */
         .segment-container { display: flex; gap: 20px; height: 100%; overflow: hidden; }
@@ -101,9 +99,11 @@
         .modal-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; border-bottom: 1px solid #222; padding-bottom: 8px; }
 
         /* CONFIG CARDS & FAB */
+        /* FIXED: Equal Columns for Settings */
         .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } 
         @media (max-width: 900px) { .settings-grid { grid-template-columns: 1fr; } }
-        .config-card { background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; }
+
+        .config-card { background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; height: 100%; }
         .config-title { font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 12px; display:flex; justify-content:space-between; }
         .input-wrap { margin-bottom: 10px; }
         .input-lbl { font-size: 11px; color: #777; margin-bottom: 4px; display: block; }
@@ -135,6 +135,7 @@
                 <div class="std-input-static"><span class="val" id="off" style="color:var(--danger)">-</span><span class="lbl">Offline</span></div>
                 <button class="btn" style="width:auto; padding:0 20px" onclick="fetchDash()"><span class="material-icons-round">sync</span></button>
             </div>
+            <!-- NVR Container fills rest of space -->
             <div id="nvr-container"></div>
         </div>
 
@@ -179,10 +180,11 @@
         <!-- SETTINGS -->
         <div id="settings" class="view">
             <div class="settings-grid">
-                <!-- Left: Config -->
-                <div style="display:flex; flex-direction:column; gap:20px; overflow-y:auto;">
+                <!-- Left: Config (Scrollable) -->
+                <div style="display:flex; flex-direction:column; gap:20px; overflow-y:auto; max-height:80vh">
                     <div id="config-container"></div>
                 </div>
+                
                 <!-- Right: NVR & CSV -->
                 <div style="display:flex; flex-direction:column; gap:20px">
                     <div class="config-card">
@@ -196,12 +198,21 @@
                     </div>
                 </div>
             </div>
+            
             <div class="fab-container">
                 <div class="fab fab-reload" onclick="apply()" title="Apply & Restart"><span class="material-icons-round">restart_alt</span></div>
                 <div class="fab fab-save" onclick="saveAll()" title="Save Only"><span class="material-icons-round">save</span></div>
             </div>
         </div>
 
+    </div>
+
+    <!-- Mobile Nav -->
+    <div class="bottom-nav">
+        <button class="tab-btn active" id="m-dash" onclick="nav('dash')"><span class="material-icons-round">dashboard</span>Dash</button>
+        <button class="tab-btn" id="m-logs" onclick="nav('logs')"><span class="material-icons-round">receipt_long</span>Logs</button>
+        <button class="tab-btn" id="m-reports" onclick="nav('reports')"><span class="material-icons-round">bar_chart</span>Report</button>
+        <button class="tab-btn" id="m-settings" onclick="nav('settings')"><span class="material-icons-round">tune</span>Config</button>
     </div>
 
     <!-- MODAL -->
@@ -255,11 +266,13 @@
                 let cards = '';
                 list.sort((a,b)=>parseInt(a.channel_id)-parseInt(b.channel_id)).forEach(c=>{
                     const st = c.status==='Online'?'on':'off';
+                    const stClass = c.status==='Online'?'status-online':'status-offline';
                     const meta = encodeURIComponent(JSON.stringify(c));
                     cards += `
                     <div class="cam-card" onclick="showCam('${meta}')">
                         <div class="cam-inner">
-                            <div class="face front imp-${c.importance} ${st}">
+                            <div class="face front imp-${c.importance} ${stClass}">
+                                <div class="dot"></div>
                                 <div class="cam-name">${c.name}</div>
                             </div>
                             <div class="face back">
@@ -326,7 +339,7 @@
             const max = Math.max(...data.map(i=>i.mins));
             document.getElementById('rep-list').innerHTML = data.map(i=>{
                 const pct = Math.min(100, (i.mins/max)*100);
-                return `<div class="rep-item"><div class="rep-top"><span class="rep-name">${i.name}</span><span class="rep-time">   ( ${i.mins}m)</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div></div>`;
+                return `<div class="rep-item"><div class="rep-top"><span class="rep-name">${i.name}</span><span class="rep-time">${i.mins}m</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div></div>`;
             }).join('');
         }
 
@@ -339,11 +352,7 @@
         }
         function renderConfig() {
             const container = document.getElementById('config-container'); container.innerHTML = '';
-            // Added both Low Importance and Regular keys
-            const groups = { 
-                'Email Alerts': ['MAIL_ENABLED', 'MAIL_SERVER', 'MAIL_PORT', 'MAIL_USER', 'MAIL_PASS', 'MAIL_RECIPIENTS', 'MAIL_FIRST_ALERT_DELAY_MINUTES', 'MAIL_LOW_IMPORTANCE_DELAY_MINUTES', 'MAIL_ALERT_FREQUENCY_MINUTES', 'MAIL_MUTE_AFTER_N_ALERTS'], 
-                'Telegram Alerts': ['TELEGRAM_ENABLED', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_IDS', 'TELEGRAM_PROXY', 'TELEGRAM_FIRST_ALERT_DELAY_MINUTES', 'TELEGRAM_LOW_IMPORTANCE_DELAY_MINUTES', 'TELEGRAM_ALERT_FREQUENCY_MINUTES', 'TELEGRAM_MUTE_AFTER_N_ALERTS'] 
-            };
+            const groups = { 'Email Alerts': ['MAIL_ENABLED', 'MAIL_SERVER', 'MAIL_PORT', 'MAIL_USER', 'MAIL_PASS', 'MAIL_RECIPIENTS', 'MAIL_FIRST_ALERT_DELAY_MINUTES', 'MAIL_ALERT_FREQUENCY_MINUTES', 'MAIL_MUTE_AFTER_N_ALERTS'], 'Telegram Alerts': ['TELEGRAM_ENABLED', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_IDS', 'TELEGRAM_PROXY', 'TELEGRAM_FIRST_ALERT_DELAY_MINUTES', 'TELEGRAM_ALERT_FREQUENCY_MINUTES', 'TELEGRAM_MUTE_AFTER_N_ALERTS'] };
             for(const [title, keys] of Object.entries(groups)) {
                 let html = `<div class="config-card" style="margin-bottom:20px"><div class="section-head">${title} <button style="background:none; border:1px solid var(--border); color:var(--primary); border-radius:4px; padding:2px 8px; cursor:pointer" onclick="testConn('${title.includes('Email')?'email':'telegram'}')">TEST</button></div>`;
                 keys.forEach(k => {

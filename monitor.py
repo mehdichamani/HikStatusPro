@@ -61,15 +61,16 @@ async def process_batch_alerts(session, cams_to_check):
 
     # Load Settings
     mail_delay = int(get_setting(session, "MAIL_FIRST_ALERT_DELAY_MINUTES", 1))
+    mail_low_delay = int(get_setting(session, "MAIL_LOW_IMPORTANCE_DELAY_MINUTES", 30)) # NEW
     mail_freq = int(get_setting(session, "MAIL_ALERT_FREQUENCY_MINUTES", 60))
     mail_mute = int(get_setting(session, "MAIL_MUTE_AFTER_N_ALERTS", 3))
 
     tele_delay = int(get_setting(session, "TELEGRAM_FIRST_ALERT_DELAY_MINUTES", 1))
+    tele_low_delay = int(get_setting(session, "TELEGRAM_LOW_IMPORTANCE_DELAY_MINUTES", 15)) # NEW
     tele_freq = int(get_setting(session, "TELEGRAM_ALERT_FREQUENCY_MINUTES", 30))
     tele_mute = int(get_setting(session, "TELEGRAM_MUTE_AFTER_N_ALERTS", 3))
 
     for cam in cams_to_check:
-        # --- RECOVERY LOGIC ---
         if cam.status == "Online":
             if cam.telegram_alert_count > 0:
                 tele_recoveries.append(f"✅ {cam.name} is back Online")
@@ -80,18 +81,15 @@ async def process_batch_alerts(session, cams_to_check):
             session.add(cam)
             continue
 
-        # --- FAILURE LOGIC ---
         downtime = now - (cam.last_online or now)
         downtime_mins = int(downtime.total_seconds() / 60)
 
-        # 1. Telegram Rules
+        # --- TELEGRAM ---
         send_tele = False
         if cam.telegram_alert_count < tele_mute:
             if cam.telegram_alert_count == 0:
-                # Importance Logic: Low (1) skips Delay, waits for Frequency
-                threshold = tele_delay
-                if cam.importance == 1: threshold = tele_freq
-                
+                # Use Low Delay if imp=1, else Normal Delay
+                threshold = tele_low_delay if cam.importance == 1 else tele_delay
                 if downtime_mins >= threshold: send_tele = True
             else:
                 last = cam.telegram_last_alert or now
@@ -99,23 +97,17 @@ async def process_batch_alerts(session, cams_to_check):
         
         if send_tele:
             msg = f"🚨 {cam.name} ({downtime_mins}m)"
-            # Check if this is the last alert before muting
-            if cam.telegram_alert_count + 1 >= tele_mute:
-                msg += " 🔕(Muted)"
-            
+            if cam.telegram_alert_count + 1 >= tele_mute: msg += " 🔕(Muted)"
             tele_alerts.append(msg)
             cam.telegram_alert_count += 1
             cam.telegram_last_alert = now
             session.add(cam)
 
-        # 2. Email Rules
+        # --- MAIL ---
         send_mail = False
         if cam.mail_alert_count < mail_mute:
             if cam.mail_alert_count == 0:
-                # Importance Logic: Low (1) skips Delay, waits for Frequency
-                threshold = mail_delay
-                if cam.importance == 1: threshold = mail_freq
-
+                threshold = mail_low_delay if cam.importance == 1 else mail_delay
                 if downtime_mins >= threshold: send_mail = True
             else:
                 last = cam.mail_last_alert or now
@@ -123,10 +115,7 @@ async def process_batch_alerts(session, cams_to_check):
         
         if send_mail:
             msg = f"{cam.name} is offline for {downtime_mins} mins"
-            # Check if this is the last alert before muting
-            if cam.mail_alert_count + 1 >= mail_mute:
-                msg += " <b>(Alerts Muted)</b>"
-                
+            if cam.mail_alert_count + 1 >= mail_mute: msg += " (Muted)"
             mail_alerts.append(msg)
             cam.mail_alert_count += 1
             cam.mail_last_alert = now
@@ -229,7 +218,6 @@ async def start_monitor_loop():
                     last_summary_hour = now.hour
 
                 session.commit()
-            
             await asyncio.sleep(60) 
 
         except asyncio.CancelledError:
