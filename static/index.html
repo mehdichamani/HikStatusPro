@@ -127,6 +127,7 @@
         <button class="nav-tab active" id="btn-summ" onclick="nav('summ')"><span class="material-icons-round">analytics</span> Summary</button>
         <button class="nav-tab" id="btn-dash" onclick="nav('dash')"><span class="material-icons-round">dashboard</span> Dash</button>
         <button class="nav-tab" id="btn-logs" onclick="nav('logs')"><span class="material-icons-round">receipt_long</span> Logs</button>
+        <button class="nav-tab" id="btn-reports" onclick="nav('reports')"><span class="material-icons-round">bar_chart</span> Reports</button>
         <button class="nav-tab" id="btn-settings" onclick="nav('settings')"><span class="material-icons-round">tune</span> Config</button>
     </nav>
 
@@ -179,6 +180,24 @@
             </div>
         </div>
 
+        <!-- REPORTS -->
+        <div id="reports" class="view">
+            <div class="segment-container">
+                <div class="segment-side">
+                    <div style="margin-bottom:15px"><label class="lbl">Range Preset</label><div style="display:flex; gap:5px; margin-top:5px"><button class="btn btn-outline" onclick="setPreset(1)">1H</button><button class="btn btn-outline" onclick="setPreset(8)">8H</button><button class="btn btn-outline" onclick="setPreset(24)">24H</button></div></div>
+                    <div style="margin-bottom:15px"><label class="lbl">Custom Start</label><input type="datetime-local" id="startDt" class="std-input" style="color-scheme:dark"></div>
+                    <div style="margin-bottom:15px"><label class="lbl">Custom End</label><input type="datetime-local" id="endDt" class="std-input" style="color-scheme:dark"></div>
+                    <button class="btn" onclick="genReport()">Generate</button>
+                </div>
+                <div class="segment-main">
+                    <div style="padding:15px; border-bottom:1px solid var(--border); font-weight:700">Downtime Report</div>
+                    <div id="rep-list" style="flex:1; overflow-y:auto">
+                        <div style="padding:40px; text-align:center; color:#444">Select range to load data</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- SETTINGS (FIXED) -->
         <div id="settings" class="view">
             <div class="segment-container">
@@ -225,6 +244,7 @@
     <div class="modal-overlay" id="camModal" onclick="this.classList.remove('open')">
         <div class="modal" onclick="event.stopPropagation()">
             <h2 id="m-name" style="margin-top:0">Cam</h2>
+            <div class="modal-row"><span style="color:var(--text-dim)">NVR</span><span id="m-nvr" style="font-family:monospace"></span></div>
             <div class="modal-row"><span style="color:var(--text-dim)">Address</span><span id="m-det" style="font-family:monospace"></span></div>
             <div class="modal-row"><span style="color:var(--text-dim)">Importance</span><span id="m-imp" style="font-weight:700; color:var(--primary)">-</span></div>
             <div class="modal-row"><span style="color:var(--text-dim)">Downtime 1h</span><span id="m-d1" style="color:var(--danger)">-</span></div>
@@ -293,6 +313,7 @@
             const c = JSON.parse(decodeURIComponent(data));
             currentCamId = c.id; currentImp = c.importance;
             document.getElementById('m-name').textContent = c.name;
+            document.getElementById('m-nvr').textContent = c.nvr_ip;
             document.getElementById('m-det').textContent = `${c.ip} (CH ${c.channel_id})`;
             document.getElementById('m-imp').textContent = ['Low','Normal','Critical'][c.importance-1];
             document.getElementById('camModal').classList.add('open');
@@ -352,6 +373,25 @@
             logOff+=logs.length; loading=false; document.getElementById('logLoader').style.display='none';
         }
         document.getElementById('logScroll').addEventListener('scroll', (e)=>{ if(e.target.scrollTop+e.target.clientHeight >= e.target.scrollHeight-50) fetchLogs(); });
+
+        // --- REPORTS ---
+        function setPreset(h) {
+            const end = new Date(); const start = new Date(end.getTime()-(h*60*60*1000));
+            start.setMinutes(start.getMinutes()-start.getTimezoneOffset()); end.setMinutes(end.getMinutes()-end.getTimezoneOffset());
+            document.getElementById('startDt').value = start.toISOString().slice(0,16); document.getElementById('endDt').value = end.toISOString().slice(0,16);
+        }
+        async function genReport() {
+            const s = new Date(document.getElementById('startDt').value).getTime()/1000; const e = new Date(document.getElementById('endDt').value).getTime()/1000;
+            if(!s || !e) return alert('Select Range');
+            document.getElementById('rep-list').innerHTML = '<div style="padding:20px; text-align:center">Analyzing...</div>';
+            const res = await fetch(`${API}/reports/generate?start=${s}&end=${e}`); const data = await res.json();
+            if(data.length===0) { document.getElementById('rep-list').innerHTML='<div style="padding:20px; text-align:center">No downtime found.</div>'; return; }
+            const max = Math.max(...data.map(i=>i.mins));
+            document.getElementById('rep-list').innerHTML = data.map(i=>{
+                const pct = Math.min(100, (i.mins/max)*100);
+                return `<div style="padding:15px; border-bottom:1px solid var(--border)"><div style="display:flex; justify-content:space-between; margin-bottom:6px"><span>${i.name}</span><span style="color:var(--danger); font-weight:700">${i.mins}m</span></div><div style="height:6px; background:#222; border-radius:3px"><div style="height:100%; background:var(--danger); border-radius:3px; width:${pct}%"></div></div></div>`;
+            }).join('');
+        }
 
         nav('summ'); setInterval(fetchDash, 5000);
     </script>
