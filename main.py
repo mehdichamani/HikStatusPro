@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select, col
-from database import init_db, get_session, Camera, Log, NVR, Settings, DowntimeEvent, engine
+from database import init_db, get_session, Camera, Log, NVR, Settings, DowntimeEvent, engine, sqlite_file_name
 from monitor import start_monitor_loop
 from alerts import send_email_raw, send_telegram_raw, get_config_dict
 

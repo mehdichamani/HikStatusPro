@@ -173,7 +173,7 @@
                         <button class="btn btn-outline" onclick="setFilter(this, 'Mail')">Mail</button>
                     </div>
                 </div>
-                <div class="segment-main" id="logScroll">
+                <div class="segment-main" id="logScroll" style="overflow-y:auto">
                     <table class="log-table"><thead><tr><th>Time</th><th>Type</th><th>State</th><th>Detail</th></tr></thead><tbody id="log-list"></tbody></table>
                     <div id="logLoader" style="text-align:center; padding:20px; color:#666; display:none">Loading...</div>
                 </div>
@@ -358,11 +358,11 @@
         async function delNVR(ip) { if(confirm('Delete?')) { await fetch(`${API}/nvrs/${ip}`, {method:'DELETE'}); loadSettings(); } }
 
         // LOGS (Restored)
-        function delayLogSearch() { clearTimeout(loading); loading = setTimeout(()=>{ logSearchVal=document.getElementById('logSearch').value; resetLogs(); }, 500); }
+        function delayLogSearch() { clearTimeout(logTimer); logTimer = setTimeout(()=>{ logSearchVal=document.getElementById('logSearch').value; resetLogs(); }, 500); }
         function setFilter(btn, val) { document.querySelectorAll('.btn-outline').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); logFilter=val; resetLogs(); }
         function resetLogs() { document.getElementById('log-list').innerHTML=''; logOff=0; allLoaded=false; fetchLogs(); }
         async function fetchLogs() {
-            if(loading===true||allLoaded)return; loading=true; document.getElementById('logLoader').style.display='block';
+            if(loading||allLoaded)return; loading=true; document.getElementById('logLoader').style.display='block';
             const res = await fetch(`${API}/logs?q=${logFilter||logSearchVal}&limit=30&offset=${logOff}`); const logs = await res.json();
             if(logs.length<30) allLoaded=true;
             document.getElementById('log-list').insertAdjacentHTML('beforeend', logs.map(l=>{
@@ -372,7 +372,13 @@
             }).join(''));
             logOff+=logs.length; loading=false; document.getElementById('logLoader').style.display='none';
         }
-        document.getElementById('logScroll').addEventListener('scroll', (e)=>{ if(e.target.scrollTop+e.target.clientHeight >= e.target.scrollHeight-50) fetchLogs(); });
+        
+        let logTimer;
+        document.addEventListener('DOMContentLoaded', ()=>{
+            document.getElementById('logScroll').addEventListener('scroll', (e)=>{ 
+                if(e.target.scrollTop+e.target.clientHeight >= e.target.scrollHeight-100) fetchLogs(); 
+            });
+        });
 
         // --- REPORTS ---
         function setPreset(h) {
