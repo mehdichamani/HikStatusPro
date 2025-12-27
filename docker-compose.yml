@@ -3,11 +3,16 @@ services:
     build: .
     container_name: hikstatus_v2
     restart: always
-    ports:
-      - "5423:5423"
     volumes:
       - ./data:/app/data
       - ./camera_names.csv:/app/camera_names.csv
     environment:
       - TZ=Asia/Tehran
       - PYTHONUNBUFFERED=1      
+    networks:
+      - proxy_net
+
+networks:
+  proxy_net:
+    name: proxy_net
+    external: true      
