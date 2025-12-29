@@ -1,7 +1,7 @@
 services:
-  hikstatus_v2:
+  hikstatus:
     build: .
-    container_name: hikstatus_v2
+    container_name: hikstatus
     restart: always
     volumes:
       - ./data:/app/data
