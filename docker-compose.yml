@@ -7,10 +7,13 @@ services:
       - ./data:/app/data
       - ./camera_names.csv:/app/camera_names.csv
     environment:
+      - NO_PROXY=localhost,127.0.0.1,172.20.2.0/24
       - TZ=Asia/Tehran
       - PYTHONUNBUFFERED=1      
     networks:
       - proxy_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   proxy_net:
